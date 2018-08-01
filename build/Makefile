@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints
+CMAKE_SOURCE_DIR = /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build
+CMAKE_BINARY_DIR = /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/CMakeFiles /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -120,7 +120,7 @@ depend:
 
 # fast build rule for target.
 3dofddp/fast:
-	$(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/build
+	$(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/build
 .PHONY : 3dofddp/fast
 
 # Help Target

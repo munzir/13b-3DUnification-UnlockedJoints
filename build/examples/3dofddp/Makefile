@@ -80,14 +80,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/CMakeFiles/progress.marks
-	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/all
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/progress.marks
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/clean
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp/clean
 .PHONY : clean
 
 # The main clean target
@@ -97,18 +97,87 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/preinstall
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/preinstall
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
 	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
+
+# Convenience name for target.
+examples/3dofddp/CMakeFiles/3dofddp.dir/rule:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp/CMakeFiles/3dofddp.dir/rule
+.PHONY : examples/3dofddp/CMakeFiles/3dofddp.dir/rule
+
+# Convenience name for target.
+3dofddp: examples/3dofddp/CMakeFiles/3dofddp.dir/rule
+
+.PHONY : 3dofddp
+
+# fast build rule for target.
+3dofddp/fast:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/build
+.PHONY : 3dofddp/fast
+
+3dof.o: 3dof.cpp.o
+
+.PHONY : 3dof.o
+
+# target to build an object file
+3dof.cpp.o:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o
+.PHONY : 3dof.cpp.o
+
+3dof.i: 3dof.cpp.i
+
+.PHONY : 3dof.i
+
+# target to preprocess a source file
+3dof.cpp.i:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.i
+.PHONY : 3dof.cpp.i
+
+3dof.s: 3dof.cpp.s
+
+.PHONY : 3dof.s
+
+# target to generate assembly for a file
+3dof.cpp.s:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.s
+.PHONY : 3dof.cpp.s
+
+Controller.o: Controller.cpp.o
+
+.PHONY : Controller.o
+
+# target to build an object file
+Controller.cpp.o:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/Controller.cpp.o
+.PHONY : Controller.cpp.o
+
+Controller.i: Controller.cpp.i
+
+.PHONY : Controller.i
+
+# target to preprocess a source file
+Controller.cpp.i:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/Controller.cpp.i
+.PHONY : Controller.cpp.i
+
+Controller.s: Controller.cpp.s
+
+.PHONY : Controller.s
+
+# target to generate assembly for a file
+Controller.cpp.s:
+	cd /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/Controller.cpp.s
+.PHONY : Controller.cpp.s
 
 # Help Target
 help:
@@ -118,6 +187,13 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
+	@echo "... 3dofddp"
+	@echo "... 3dof.o"
+	@echo "... 3dof.i"
+	@echo "... 3dof.s"
+	@echo "... Controller.o"
+	@echo "... Controller.i"
+	@echo "... Controller.s"
 .PHONY : help
 
 

@@ -54,81 +54,81 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints
+CMAKE_SOURCE_DIR = /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build
+CMAKE_BINARY_DIR = /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build
 
 #=============================================================================
 # Directory level rules for directory examples
 
 # Convenience name for "all" pass in the directory.
-examples/all: examples/3dofddp_original/all
+examples/all: examples/3dofddp/all
 
 .PHONY : examples/all
 
 # Convenience name for "clean" pass in the directory.
-examples/clean: examples/3dofddp_original/clean
+examples/clean: examples/3dofddp/clean
 
 .PHONY : examples/clean
 
 # Convenience name for "preinstall" pass in the directory.
-examples/preinstall: examples/3dofddp_original/preinstall
+examples/preinstall: examples/3dofddp/preinstall
 
 .PHONY : examples/preinstall
 
 #=============================================================================
-# Directory level rules for directory examples/3dofddp_original
+# Directory level rules for directory examples/3dofddp
 
 # Convenience name for "all" pass in the directory.
-examples/3dofddp_original/all: examples/3dofddp_original/CMakeFiles/3dofddp.dir/all
+examples/3dofddp/all: examples/3dofddp/CMakeFiles/3dofddp.dir/all
 
-.PHONY : examples/3dofddp_original/all
+.PHONY : examples/3dofddp/all
 
 # Convenience name for "clean" pass in the directory.
-examples/3dofddp_original/clean: examples/3dofddp_original/CMakeFiles/3dofddp.dir/clean
+examples/3dofddp/clean: examples/3dofddp/CMakeFiles/3dofddp.dir/clean
 
-.PHONY : examples/3dofddp_original/clean
+.PHONY : examples/3dofddp/clean
 
 # Convenience name for "preinstall" pass in the directory.
-examples/3dofddp_original/preinstall:
+examples/3dofddp/preinstall:
 
-.PHONY : examples/3dofddp_original/preinstall
+.PHONY : examples/3dofddp/preinstall
 
 #=============================================================================
-# Target rules for target examples/3dofddp_original/CMakeFiles/3dofddp.dir
+# Target rules for target examples/3dofddp/CMakeFiles/3dofddp.dir
 
 # All Build rule for target.
-examples/3dofddp_original/CMakeFiles/3dofddp.dir/all:
-	$(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/depend
-	$(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/CMakeFiles --progress-num=1,2,3 "Built target 3dofddp"
-.PHONY : examples/3dofddp_original/CMakeFiles/3dofddp.dir/all
+examples/3dofddp/CMakeFiles/3dofddp.dir/all:
+	$(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/depend
+	$(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles --progress-num=1,2,3 "Built target 3dofddp"
+.PHONY : examples/3dofddp/CMakeFiles/3dofddp.dir/all
 
 # Include target in all.
-all: examples/3dofddp_original/CMakeFiles/3dofddp.dir/all
+all: examples/3dofddp/CMakeFiles/3dofddp.dir/all
 
 .PHONY : all
 
 # Build rule for subdir invocation for target.
-examples/3dofddp_original/CMakeFiles/3dofddp.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/CMakeFiles 3
-	$(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp_original/CMakeFiles/3dofddp.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/CMakeFiles 0
-.PHONY : examples/3dofddp_original/CMakeFiles/3dofddp.dir/rule
+examples/3dofddp/CMakeFiles/3dofddp.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles 3
+	$(MAKE) -f CMakeFiles/Makefile2 examples/3dofddp/CMakeFiles/3dofddp.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles 0
+.PHONY : examples/3dofddp/CMakeFiles/3dofddp.dir/rule
 
 # Convenience name for target.
-3dofddp: examples/3dofddp_original/CMakeFiles/3dofddp.dir/rule
+3dofddp: examples/3dofddp/CMakeFiles/3dofddp.dir/rule
 
 .PHONY : 3dofddp
 
 # clean rule for target.
-examples/3dofddp_original/CMakeFiles/3dofddp.dir/clean:
-	$(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/clean
-.PHONY : examples/3dofddp_original/CMakeFiles/3dofddp.dir/clean
+examples/3dofddp/CMakeFiles/3dofddp.dir/clean:
+	$(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/clean
+.PHONY : examples/3dofddp/CMakeFiles/3dofddp.dir/clean
 
 # clean rule for target.
-clean: examples/3dofddp_original/CMakeFiles/3dofddp.dir/clean
+clean: examples/3dofddp/CMakeFiles/3dofddp.dir/clean
 
 .PHONY : clean
 

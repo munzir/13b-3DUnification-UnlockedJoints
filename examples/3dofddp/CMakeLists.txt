@@ -8,8 +8,10 @@ add_compile_options(-std=c++11)
 
 include_directories(${DART_INCLUDE_DIRS})
 
-file(GLOB srcs "3dof.cpp")
+
+file(GLOB srcs "*.cpp" "*.hpp")
+
 add_executable(${PROJECT_NAME} ${srcs})
 
-target_link_libraries(${PROJECT_NAME} ${DART_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${DART_LIBRARIES} nlopt config4cpp)
 
