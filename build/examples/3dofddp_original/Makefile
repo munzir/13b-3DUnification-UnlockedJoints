@@ -152,6 +152,33 @@ examples/3dofddp_original/CMakeFiles/3dofddp.dir/rule:
 	cd /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/3dof.cpp.s
 .PHONY : 3dof.cpp.s
 
+Controller.o: Controller.cpp.o
+
+.PHONY : Controller.o
+
+# target to build an object file
+Controller.cpp.o:
+	cd /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/Controller.cpp.o
+.PHONY : Controller.cpp.o
+
+Controller.i: Controller.cpp.i
+
+.PHONY : Controller.i
+
+# target to preprocess a source file
+Controller.cpp.i:
+	cd /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/Controller.cpp.i
+.PHONY : Controller.cpp.i
+
+Controller.s: Controller.cpp.s
+
+.PHONY : Controller.s
+
+# target to generate assembly for a file
+Controller.cpp.s:
+	cd /home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp_original/CMakeFiles/3dofddp.dir/build.make examples/3dofddp_original/CMakeFiles/3dofddp.dir/Controller.cpp.s
+.PHONY : Controller.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -164,6 +191,9 @@ help:
 	@echo "... 3dof.o"
 	@echo "... 3dof.i"
 	@echo "... 3dof.s"
+	@echo "... Controller.o"
+	@echo "... Controller.i"
+	@echo "... Controller.s"
 .PHONY : help
 
 

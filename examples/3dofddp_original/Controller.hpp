@@ -41,9 +41,9 @@
 #include <config4cpp/Configuration.h>
 #include <iostream>
 
-using namespace dart;
-using namespace std;  
-using namespace config4cpp;
+// using namespace dart;
+// using namespace std;  
+// using namespace config4cpp;
 
 class filter {
   public:
@@ -94,13 +94,13 @@ public:
 
   void setRightOrientationOptParams(const Eigen::Vector3d& _RightTargetRPY);
 
-  void setBalanceOptParams();
+  void setBalanceOptParams(double ddthref);
 
   void computeDynamics();
 
   /// \brief
   void update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::Vector3d& _RightTargetPosition, \
-    const Eigen::Vector3d& _LeftTargetRPY, const Eigen::Vector3d& _RightTargetRPY);
+    const Eigen::Vector3d& _LeftTargetRPY, const Eigen::Vector3d& _RightTargetRPY,double ddthref, double tau_0);
 
   /// \brief Get robot
   dart::dynamics::SkeletonPtr getRobot() const;

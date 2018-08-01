@@ -5,6 +5,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
   "/home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/examples/3dofddp_original/3dof.cpp" "/home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/examples/3dofddp_original/CMakeFiles/3dofddp.dir/3dof.cpp.o"
+  "/home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/examples/3dofddp_original/Controller.cpp" "/home/krang/dart/Unification/13b-3DUnification-UnlockedJoints/build/examples/3dofddp_original/CMakeFiles/3dofddp.dir/Controller.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 

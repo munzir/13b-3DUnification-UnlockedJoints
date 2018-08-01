@@ -9,7 +9,11 @@
 #include <ddp/mpc.hpp>
 #include <ddp/util.hpp>
 #include <nlopt.hpp>
+#include "Controller.hpp"
 #include "krangddp.h"
+
+
+
 
 using namespace std;
 using namespace dart::common;
@@ -17,29 +21,29 @@ using namespace dart::dynamics;
 using namespace dart::simulation;
 using namespace dart::math;
 
-class filter {
-  public:
-    filter(const int dim, const int n)
-    {
-      samples.set_capacity(n);
-      total = Eigen::VectorXd::Zero(dim,1);
-    }
-    void AddSample(Eigen::VectorXd v)
-    {
-      if(samples.full()) 
-      {
-        total -= samples.front();
-      }
-      samples.push_back(v);
-      total += v;
-      average = total/samples.size();
-    }
+// class filter {
+//   public:
+//     filter(const int dim, const int n)
+//     {
+//       samples.set_capacity(n);
+//       total = Eigen::VectorXd::Zero(dim,1);
+//     }
+//     void AddSample(Eigen::VectorXd v)
+//     {
+//       if(samples.full()) 
+//       {
+//         total -= samples.front();
+//       }
+//       samples.push_back(v);
+//       total += v;
+//       average = total/samples.size();
+//     }
   
-    boost::circular_buffer<Eigen::VectorXd> samples;
-    Eigen::VectorXd total;
-    Eigen::VectorXd average;
+//     boost::circular_buffer<Eigen::VectorXd> samples;
+//     Eigen::VectorXd total;
+//     Eigen::VectorXd average;
     
-};
+// };
 
 Eigen::Vector3d getBodyCOM(dart::dynamics::SkeletonPtr robot) {
   double fullMass = robot->getMass();
@@ -210,6 +214,7 @@ class MyWindow : public dart::gui::SimWindow
       computeDDPTrajectory();
       cout << "10" << endl;
 
+      mController = new Controller(mkrang, mkrang->getBodyNode("lGripper"), mkrang->getBodyNode("rGripper") ) ;
       
     }
 
@@ -458,6 +463,7 @@ class MyWindow : public dart::gui::SimWindow
     CSV_writer<Scalar> mpc_writer;
 
     WorldPtr world3dof;
+    Controller *mController;
 
 
 };

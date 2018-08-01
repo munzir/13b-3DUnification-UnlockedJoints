@@ -30,7 +30,9 @@
  */
 
 #include "Controller.hpp"
-
+using namespace dart;
+using namespace std;  
+using namespace config4cpp;
 //==========================================================================
 Controller::Controller(dart::dynamics::SkeletonPtr _robot,
                        dart::dynamics::BodyNode* _LeftendEffector,
@@ -171,6 +173,34 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
   // **************************** Torque Limits
   mTauLim << 120, 740, 370, 10, 370, 370, 175, 175, 40, 40, 9.5, 370, 370, 175, 175, 40, 40, 9.5;
+
+  // {
+
+  // // Set the initial target positon to the initial position of the end effector
+  // // mTargetPosition = mController->getEndEffector("right")->getTransform().translation();
+  // // mLeftTargetPosition << 0.4, 0.1, 0.5;
+  // // mRightTargetPosition << 0.4, -0.1, 0.5;
+  // // mLeftTargetRPY << 0.0, 0.0, 0.0;
+  // // mRightTargetRPY << 0.0, 0.0, 0.0;
+  
+  //       Eigen::Matrix<double, 4, 4> baseTf = mRobot->getBodyNode(0)->getTransform().matrix();
+  //       double psi =  atan2(baseTf(0,0), -baseTf(1,0));
+  //       Eigen::Transform<double, 3, Eigen::Affine> Tf0 = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
+  //       Tf0.rotate(Eigen::AngleAxisd(psi, Eigen::Vector3d::UnitZ()));
+  //       Eigen::Matrix3d Rot0 = (Tf0.matrix().block<3, 3>(0, 0)).transpose();
+  //       Eigen::Vector3d xyz0 = (mRobot->getPositions()).segment(3,3);
+  
+  //       mLeftTargetPosition = Rot0*(getEndEffector("left")->getTransform().translation() - xyz0);
+  //       mRightTargetPosition = Rot0*(getEndEffector("right")->getTransform().translation() - xyz0);
+
+
+  //       mLeftTargetRPY = dart::math::matrixToEulerXYZ(Rot0*mLeftEndEffector("left")->getTransform().rotation());
+  //       mRightTargetRPY = dart::math::matrixToEulerXYZ(Rot0*mRightEndEffector("right")->getTransform().rotation());
+  // }
+
+
+
+
 }
 
 //=========================================================================
@@ -471,7 +501,7 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
   mbOrR = -mWOrR*(dJwR*mdqBody - dwref);
 }
 
-void Controller::setBalanceOptParams(){
+void Controller::setBalanceOptParams(double ddthref){
 
   static Eigen::Vector3d COM, dCOM, zCOMInitVec, ddCOMref;
   static Eigen::Matrix<double, 3, 25> JCOM_full, dJCOM_full;
@@ -549,7 +579,7 @@ void Controller::computeDynamics(){
 
 //=========================================================================
 void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::Vector3d& _RightTargetPosition, \
-  const Eigen::Vector3d& _LeftTargetRPY, const Eigen::Vector3d& _RightTargetRPY) 
+  const Eigen::Vector3d& _LeftTargetRPY, const Eigen::Vector3d& _RightTargetRPY, double ddthref, double tau_0) 
 {
  
   
@@ -581,7 +611,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
 
   // sets mPBal and mbBal
   // Needs mRot0, mRobot, mxyz0, mdxyz0, mdRot0, mKpCOM, mKvCOM, mJtf, mdJtf
-  setBalanceOptParams();
+  setBalanceOptParams(ddthref);
   
   
   // set Regulation Opt Params
