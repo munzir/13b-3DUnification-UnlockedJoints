@@ -506,6 +506,7 @@ void Controller::setBalanceOptParams(double ddthref){
   static Eigen::Vector3d COM, dCOM, zCOMInitVec, ddCOMref;
   static Eigen::Matrix<double, 3, 25> JCOM_full, dJCOM_full;
   static Eigen::Matrix<double, 3, 18> JCOM, dJCOM;
+  static double theta, dtheta, Jtheta, dJtheta;
 
   //*********************************** Balance
   // Excluding wheels from COM Calculation
@@ -521,10 +522,17 @@ void Controller::setBalanceOptParams(double ddthref){
   // Jacobian
   JCOM_full = mRobot->getCOMLinearJacobian();
   JCOM = (mRot0*JCOM_full*mJtf).topRightCorner(3,18); 
+  Jtheta = (cos(theta)/COM(2))*(cos(theta)*dCOM(0) - sin(theta)*dCOM(2));
   
   // Jacobian Derivative
   dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
   dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
+
+
+
+  //Computing Theta
+  theta = atan2(COM(2),COM(0));
+  dtheta = (cos(theta)/COM(2))*(cos(theta)*dCOM(0) - sin(theta)*dCOM(2));
 
   // P and b 
   mPBal << mWBal*JCOM;
