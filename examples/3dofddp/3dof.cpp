@@ -195,6 +195,7 @@ class MyWindow : public dart::gui::SimWindow {
     int mMPCSteps;
     double mMPCdt;
     CSV_writer<Scalar> mMPCWriter;
+    State mGoalState;
 };
 
 //====================================================================
@@ -687,7 +688,7 @@ void MyWindow::computeDDPTrajectory() {
         cout << "9b" << endl;
 
   dart::dynamics::Frame* baseFrame = m3DOF->getBodyNode("Base");
-  p.R = 2.500000e-01; p.L = 6.000000e-01; p.g=9.800000e+00;
+  p.R = mR; p.L = mL; p.g=9.800000e+00;
         cout << "9c" << endl;
 
   p.mw = m3DOF->getBodyNode("LWheel")->getMass(); 
@@ -719,9 +720,9 @@ void MyWindow::computeDDPTrajectory() {
   CSV_writer<Scalar> writer;
   util::DefaultLogger logger;
   bool verbose = true;
-  Scalar tf = 20;
+  Scalar tf = mFinalTime;
   auto time_steps = util::time_steps(tf, mMPCdt);
-  int max_iterations = 15;
+  int max_iterations = mDDPMaxIter;
   
 
   mDDPDynamics = new Dynamics(p);
@@ -731,24 +732,24 @@ void MyWindow::computeDDPTrajectory() {
   x0 << 0, 0, x0(2), 0, 0, 0, 0, 0; 
   cout << x0 << endl;
   // Dynamics::State xf; xf << 2, 0, 0, 0, 0, 0, 0.01, 5;
-  Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
+  // Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
   Dynamics::ControlTrajectory u = Dynamics::ControlTrajectory::Zero(2, time_steps);
 
   // Costs
   Cost::StateHessian Q;
   Q.setZero();
-  Q.diagonal() << 0,0.1,0.1,0.1,0.1,0.1,0.1,0.1;
+  Q.diagonal() << mDDPStateHessian;
 
   Cost::ControlHessian R;
   R.setZero();
-  R.diagonal() << 0.01, 0.01;
+  R.diagonal() << mDDPControlHessian;
 
   TerminalCost::Hessian Qf;
   Qf.setZero();
-  Qf.diagonal() << 0,1e4,1e4,1e4,1e4,1e4,1e4,1e4;
+  Qf.diagonal() << mDDPTerminalStateHessian;
 
-  Cost cp_cost(xf, Q, R);
-  TerminalCost cp_terminal_cost(xf, Qf);
+  Cost cp_cost(mGoalState, Q, R);
+  TerminalCost cp_terminal_cost(mGoalState, Qf);
 
   // initialize DDP for trajectory planning
   DDP_Opt trej_ddp (mMPCdt, time_steps, max_iterations, &logger, verbose);
@@ -773,15 +774,14 @@ void MyWindow::timeStepping() {
   State cur_state = getCurrentState(); 
 
   // MPC DDP RECEDING HORIZON CALCULATION
-  int beginStep = 10; 
-  int cur_mpc_steps = ((mSteps > beginStep) ? ((mSteps - beginStep) / 10) : -1);
+  int cur_mpc_steps = ((mSteps > mBeginStep) ? ((mSteps - mBeginStep) / 10) : -1);
 
   if (cur_mpc_steps > mMPCSteps) {
     mMPCSteps = cur_mpc_steps;
-    int max_iterations = 15; 
+    int max_iterations = mMPCMaxIter; 
     bool verbose = true; 
     util::DefaultLogger logger;
-    int mpc_horizon = 10; 
+    int mpc_horizon = mMPCHorizon; 
     
     Dynamics::State target_state;
     target_state = mDDPStateTraj.col(mMPCSteps + mpc_horizon);
@@ -794,11 +794,11 @@ void MyWindow::timeStepping() {
     Cost::ControlHessian ctl_R;
     
     ctl_R.setZero();
-    ctl_R.diagonal() << 0.01, 0.01;
+    ctl_R.diagonal() << mMPCControlHessian;
     Q_mpc.setZero();
-    Q_mpc.diagonal() << 0, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1;
+    Q_mpc.diagonal() << mMPCStateHessian;
     Qf_mpc.setZero();
-    Qf_mpc.diagonal() << 0, 1e4, 1e4, 1e4, 1e4, 1e4, 1e4, 1e4;
+    Qf_mpc.diagonal() << mMPCTerminalStateHessian;
     Cost running_cost_horizon(target_state, Q_mpc, ctl_R);
     TerminalCost terminal_cost_horizon(target_state, Qf_mpc);
     
