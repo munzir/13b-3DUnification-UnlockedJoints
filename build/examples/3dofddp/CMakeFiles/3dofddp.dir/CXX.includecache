@@ -1519,6 +1519,8 @@ Controller.hpp
 /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.hpp
 krangddp.h
 /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/krangddp.h
+config4cpp/Configuration.h
+-
 
 /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.cpp
 Controller.hpp
