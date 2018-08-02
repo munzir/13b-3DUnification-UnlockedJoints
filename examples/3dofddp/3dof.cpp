@@ -208,7 +208,8 @@ class MyWindow : public dart::gui::SimWindow
       cFilt = new filter(5, 50);
       R = 0.25;
       L = 0.68;//*6;
-      mpc_writer.open_file("mpc_traj.csv");
+      char mpctrajfile[] = "mpc_traj.csv";
+      mpc_writer.open_file(mpctrajfile);
       cout << "9" << endl;
 
       computeDDPTrajectory();
@@ -282,7 +283,7 @@ class MyWindow : public dart::gui::SimWindow
 
       // Initial state 
       State x0 = getCurrentState();
-      x0 << 0, 0, 0, 0, 0, 0, 0, 0; 
+      x0 << 0, 0, x0(2), 0, 0, 0, 0, 0; 
       cout << x0 << endl;
       // Dynamics::State xf; xf << 2, 0, 0, 0, 0, 0, 0.01, 5;
       Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
@@ -531,135 +532,70 @@ SkeletonPtr createFloor()
 }
 
 
-
-
-struct comOptParams {
-  SkeletonPtr robot;
-  Eigen::Matrix<double, 25, 1> qInit;
-};
-
-double comOptFunc(const std::vector<double> &x, std::vector<double> &grad, void *my_func_data) {
-  comOptParams* optParams = reinterpret_cast<comOptParams *>(my_func_data);
-  Eigen::Matrix<double, 25, 1> q(x.data());
-
-  if (!grad.empty()) {
-    Eigen::Matrix<double, 25, 1> mGrad = q-optParams->qInit;
-    Eigen::VectorXd::Map(&grad[0], mGrad.size()) = mGrad;
-  }
-  return (0.5*pow((q-optParams->qInit).norm(), 2));
-}
-
-double comConstraint(const std::vector<double> &x, std::vector<double> &grad, void *com_const_data) {
-  comOptParams* optParams = reinterpret_cast<comOptParams *>(com_const_data);
-  Eigen::Matrix<double, 25, 1> q(x.data());
-  optParams->robot->setPositions(q);
-  return (pow(optParams->robot->getCOM()(0)-optParams->robot->getPosition(3), 2) \
-    + pow(optParams->robot->getCOM()(1)-optParams->robot->getPosition(4), 2));
-}
-
-double wheelAxisConstraint(const std::vector<double> &x, std::vector<double> &grad, void *wheelAxis_const_data) {
-  comOptParams* optParams = reinterpret_cast<comOptParams *>(wheelAxis_const_data);
-  Eigen::Matrix<double, 25, 1> q(x.data());
-  optParams->robot->setPositions(q);
-  return optParams->robot->getBodyNode(0)->getTransform().matrix()(2,0);
-}
-
-double headingConstraint(const std::vector<double> &x, std::vector<double> &grad, void *heading_const_data) {
-  comOptParams* optParams = reinterpret_cast<comOptParams *>(heading_const_data);
-  Eigen::Matrix<double, 25, 1> q(x.data());
-  optParams->robot->setPositions(q);
-  Eigen::Matrix<double, 4, 4> Tf = optParams->robot->getBodyNode(0)->getTransform().matrix();
-  double heading = atan2(Tf(0,0), -Tf(1,0));
-  optParams->robot->setPositions(optParams->qInit);
-  Tf = optParams->robot->getBodyNode(0)->getTransform().matrix();
-  double headingInit = atan2(Tf(0,0), -Tf(1,0));
-  return heading-headingInit;
-}
-
-
-
 dart::dynamics::SkeletonPtr createKrang() {
-  // Load the Skeleton from a file
+  
   dart::utils::DartLoader loader;
-  dart::dynamics::SkeletonPtr krang =
-      loader.parseSkeleton("/home/panda/myfolder/wholebodycontrol/09-URDF/Krang/KrangOld.urdf");
+  dart::dynamics::SkeletonPtr krang;
+  ifstream file;
+  char line [1024];
+  std::istringstream stream;
+  Eigen::Matrix<double, 24, 1> initPoseParams; // heading, qBase, x, y, z, qLWheel, qRWheel, qWaist, qTorso, qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
+  size_t i;
+  double newDouble, headingInit, qBaseInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, th;
+  Eigen::Vector3d xyzInit, COM;
+  Eigen::Matrix<double, 7, 1> qLeftArmInit;
+  Eigen::Matrix<double, 7, 1> qRightArmInit;
+  Eigen::Transform<double, 3, Eigen::Affine> baseTf;
+  Eigen::AngleAxisd aa;
+  Eigen::Matrix<double, 25, 1> q;
+
+  // Load the Skeleton from a file
+  krang = loader.parseSkeleton("/home/panda/myfolder/wholebodycontrol/09-URDF/Krang/KrangOld.urdf");
   krang->setName("krang");
 
   // Read initial pose from the file
-  // ifstream file("/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/defaultInit.txt");
-  // assert(file.is_open());
-  // char line [1024];
-  // file.getline(line, 1024);
-  // std::istringstream stream(line);
-  // Eigen::Matrix<double, 24, 1> initPoseParams; // heading, qBase, x, y, z, qLWheel, qRWheel, qWaist, qTorso, qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
-  // size_t i = 0; double newDouble;
-  // while((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
-  // file.close();
-  // double headingInit; headingInit = initPoseParams(0);
-  // double qBaseInit; qBaseInit = initPoseParams(1);
-  // Eigen::Vector3d xyzInit; xyzInit << initPoseParams.segment(2,3);
-  // double qLWheelInit; qLWheelInit = initPoseParams(5);
-  // double qRWheelInit; qRWheelInit = initPoseParams(6);
-  // double qWaistInit; qWaistInit = initPoseParams(7);
-  // double qTorsoInit; qTorsoInit = initPoseParams(8);
-  // double qKinectInit; qKinectInit = initPoseParams(9);
-  // Eigen::Matrix<double, 7, 1> qLeftArmInit; qLeftArmInit << initPoseParams.segment(10, 7);
-  // Eigen::Matrix<double, 7, 1> qRightArmInit; qRightArmInit << initPoseParams.segment(17, 7);
-  
-  // // Calculating the axis angle representation of orientation from headingInit and qBaseInit: 
-  // // RotX(pi/2)*RotY(-pi/2+headingInit)*RotX(-qBaseInit)
-  // Eigen::Transform<double, 3, Eigen::Affine> baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
-  // baseTf.prerotate(Eigen::AngleAxisd(-qBaseInit,Eigen::Vector3d::UnitX())).prerotate(Eigen::AngleAxisd(-M_PI/2+headingInit,Eigen::Vector3d::UnitY())).prerotate(Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitX()));
-  // Eigen::AngleAxisd aa(baseTf.matrix().block<3,3>(0,0));
-
-  // Ensure CoM is right on top of wheel axis
-  // const int dof = (const int)krang->getNumDofs();
-  // comOptParams optParams;
-  // optParams.robot = krang;
-  // optParams.qInit << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit; 
-  // nlopt::opt opt(nlopt::LN_COBYLA, dof);
-  // std::vector<double> q_vec(dof);
-  // double minf;
-  // opt.set_min_objective(comOptFunc, &optParams);
-  // opt.add_equality_constraint(comConstraint, &optParams, 1e-8);
-  // opt.add_equality_constraint(wheelAxisConstraint, &optParams, 1e-8);
-  // opt.add_equality_constraint(headingConstraint, &optParams, 1e-8);
-  // opt.set_xtol_rel(1e-4);
-  // opt.set_maxtime(10);
-  // opt.optimize(q_vec, minf);
-  // Eigen::Matrix<double, 25, 1> q(q_vec.data());
-  
-  // Initializing the configuration
-  Eigen::Matrix<double, 25, 1> q;
-  char line [1024];
-  double newDouble;
-  ifstream file("/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/overwriteInitPose.txt");
+  file = ifstream("/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/defaultInit.txt");
   assert(file.is_open());
   file.getline(line, 1024);
-  std::istringstream stream(line);
-  int i = 0;
-  while((i < 25) && (stream >> newDouble)) q(i++) = newDouble;
+  stream = std::istringstream(line);
+  i = 0;
+  while((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
   file.close();
+  headingInit = initPoseParams(0);
+  qBaseInit = initPoseParams(1);
+  xyzInit << initPoseParams.segment(2,3);
+  qLWheelInit = initPoseParams(5);
+  qRWheelInit = initPoseParams(6);
+  qWaistInit = initPoseParams(7);
+  qTorsoInit = initPoseParams(8);
+  qKinectInit = initPoseParams(9);
+  qLeftArmInit << initPoseParams.segment(10, 7);
+  qRightArmInit << initPoseParams.segment(17, 7);
+  
+  // Calculating the axis angle representation of orientation from headingInit and qBaseInit: 
+  // RotX(pi/2)*RotY(-pi/2+headingInit)*RotX(-qBaseInit)
+  baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
+  baseTf.prerotate(Eigen::AngleAxisd(-qBaseInit,Eigen::Vector3d::UnitX())).prerotate(Eigen::AngleAxisd(-M_PI/2+headingInit,Eigen::Vector3d::UnitY())).prerotate(Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitX()));
+  aa = Eigen::AngleAxisd(baseTf.rotation());
+  
+  // Set the positions and get the resulting COM angle
+  q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit; 
+  krang->setPositions(q);
+  COM = krang->getCOM() - xyzInit;
+  th = atan2(COM(0), COM(2));
+  
+  // Adjust qBaseInit to bring COM on top of wheels and set the positions again 
+  qBaseInit -= th;
+  baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
+  baseTf.prerotate(Eigen::AngleAxisd(-qBaseInit,Eigen::Vector3d::UnitX())).prerotate(Eigen::AngleAxisd(-M_PI/2+headingInit,Eigen::Vector3d::UnitY())).prerotate(Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitX()));
+  aa = Eigen::AngleAxisd(baseTf.rotation());
+  q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit; 
   krang->setPositions(q);
 
-  // The overwrite pose is arbitrary in x, y, thL, thR and psi
-  q(3) = 0.0; q(4) = 0.0; q(6) = 0.0; q(7) = 0.0;  // x, y, thR, thL
-  // Make psi go to zero
-  Eigen::Matrix<double, 4, 4> Tf = krang->getBodyNode(0)->getTransform().matrix();
-  double psi =  atan2(Tf(0,0), -Tf(1,0));
-  double qBody1 = atan2(Tf(0,1)*cos(psi) + Tf(1,1)*sin(psi), Tf(2,1));
-  Eigen::Transform<double, 3, Eigen::Affine> baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
-  double headingInit = 0;
-  baseTf.prerotate(Eigen::AngleAxisd(-qBody1,Eigen::Vector3d::UnitX())).prerotate(Eigen::AngleAxisd(-M_PI/2+headingInit,Eigen::Vector3d::UnitY())).prerotate(Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitX()));
-  Eigen::AngleAxisd aa(baseTf.matrix().block<3,3>(0,0));
-  q.head(3) = aa.angle()*aa.axis();
-  krang->setPositions(q);
-  
   // int joints = krang->getNumJoints();
   // for(int i=3; i < joints; i++) {
   //   krang->getJoint(i)->setActuatorType(dart::dynamics::Joint::ActuatorType::LOCKED);
   // }
-
 
   krang->getJoint(0)->setDampingCoefficient(0, 0.5);
   krang->getJoint(1)->setDampingCoefficient(0, 0.5);
