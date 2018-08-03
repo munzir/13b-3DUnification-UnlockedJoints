@@ -47,46 +47,37 @@ class MyWindow : public dart::gui::SimWindow {
         
         mInitCOMAngle = (cfg->lookupFloat(scope, "initCOMAngle"))*M_PI/180.0;
 
-        // -- Gains
-        // mKpEE(0, 0) = cfg->lookupFloat(scope, "KpEE"); mKpEE(1, 1) = mKpEE(0, 0); mKpEE(2, 2) = mKpEE(0, 0);
-        // mKvEE(0, 0) = cfg->lookupFloat(scope, "KvEE"); mKvEE(1, 1) = mKvEE(0, 0); mKvEE(2, 2) = mKvEE(0, 0);
-        // mKpOr(0, 0) = cfg->lookupFloat(scope, "KpOr"); mKpOr(1, 1) = mKpOr(0, 0); mKpOr(2, 2) = mKpOr(0, 0);
-        // mKvOr(0, 0) = cfg->lookupFloat(scope, "KvOr"); mKvOr(1, 1) = mKvOr(0, 0); mKvOr(2, 2) = mKvOr(0, 0);
-        // mKpCOM = cfg->lookupFloat(scope, "KpCOM");
-        // mKvCOM = cfg->lookupFloat(scope, "KvCOM");
-        // mKvSpeedReg = cfg->lookupFloat(scope, "KvSpeedReg");
-        // mKpPose = cfg->lookupFloat(scope, "KpPose");
-        // mKvPose = cfg->lookupFloat(scope, "KvPose");
+        str = cfg->lookupString(scope, "goalState"); 
+        stream.str(str); for(int i=0; i<8; i++) stream >> mGoalState(i); stream.clear();
+
+        mFinalTime = cfg->lookupFloat(scope, "finalTime");
         
-        // // -- Weights
-        // // Right Arm
-        // mWEER = cfg->lookupFloat(scope, "wEER");
-        // mWOrR = cfg->lookupFloat(scope, "wOrR");
-        // // Left Arm
-        // mWEEL = cfg->lookupFloat(scope, "wEEL");
-        // mWOrL = cfg->lookupFloat(scope, "wOrL");
-        // // Balance
-        // // str = cfg->lookupString(scope, "wBal"); 
-        // // stream.str(str);
-        // // for(int i=0; i<3; i++) stream >> mWBal(i, i);
-        // // stream.clear();
-        // mWBal = cfg->lookupFloat(scope, "wBal");
-        // // Regulation
-        // const char* s[] = {"wRegBase", "wRegWaist", "wRegTorso", "wRegKinect", \
-        //  "wRegArm1", "wRegArm2", "wRegArm3", "wRegArm4", "wRegArm5", "wRegArm6", "wRegArm7"};
-        // for(int i=0; i<11; i++) {
-        //   str = cfg->lookupString(scope, s[i]); 
-        //   stream.str(str);
-        //   stream >> mWMatPose(i, i);     
-        //   stream >> mWMatSpeedReg(i, i); 
-        //   stream >> mWMatReg(i, i);      
-        //   if(i > 3){
-        //     mWMatPose(i+7, i+7) = mWMatPose(i, i);
-        //     mWMatSpeedReg(i+7, i+7) = mWMatSpeedReg(i, i); 
-        //     mWMatReg(i+7, i+7) = mWMatReg(i, i); 
-        //   }
-        //   stream.clear();
-        // }
+        mDDPMaxIter = cfg->lookupInt(scope, "DDPMaxIter");
+        
+        str = cfg->lookupString(scope, "DDPStatePenalties"); 
+        stream.str(str); for(int i=0; i<8; i++) stream >> mDDPStatePenalties(i); stream.clear();
+        
+        str = cfg->lookupString(scope, "DDPTerminalStatePenalties"); 
+        stream.str(str); for(int i=0; i<8; i++) stream >> mDDPTerminalStatePenalties(i); stream.clear();
+        
+        str = cfg->lookupString(scope, "DDPControlPenalties"); 
+        stream.str(str); for(int i=0; i<2; i++) stream >> mDDPControlPenalties(i); stream.clear();
+        
+        mBeginStep = cfg->lookupInt(scope, "beginStep");
+
+        mMPCMaxIter = cfg->lookupInt(scope, "MPCMaxIter");
+        
+        mMPCHorizon = cfg->lookupInt(scope, "MPCHorizon");
+        
+        str = cfg->lookupString(scope, "MPCStatePenalties"); 
+        stream.str(str); for(int i=0; i<8; i++) stream >> mMPCStatePenalties(i); stream.clear();
+        
+        str = cfg->lookupString(scope, "MPCTerminalStatePenalties"); 
+        stream.str(str); for(int i=0; i<8; i++) stream >> mMPCTerminalStatePenalties(i); stream.clear();
+        
+        str = cfg->lookupString(scope, "MPCControlPenalties"); 
+        stream.str(str); for(int i=0; i<2; i++) stream >> mMPCControlPenalties(i); stream.clear();
+        
       } catch(const ConfigurationException & ex) {
           cerr << ex.c_str() << endl;
           cfg->destroy();
@@ -191,11 +182,21 @@ class MyWindow : public dart::gui::SimWindow {
     Dynamics *mDDPDynamics;
     Control mMPCControlRef;
     State mMPCStateRef;
-    int mSteps;
+    int mSteps, mBeginStep;
     int mMPCSteps;
     double mMPCdt;
     CSV_writer<Scalar> mMPCWriter;
     State mGoalState;
+    double mFinalTime;
+    int mDDPMaxIter;
+    Eigen::Matrix<double, 8, 1> mDDPStatePenalties;
+    Eigen::Matrix<double, 8, 1> mDDPTerminalStatePenalties;
+    Eigen::Matrix<double, 2, 1> mDDPControlPenalties;
+    int mMPCMaxIter;
+    int mMPCHorizon;
+    Eigen::Matrix<double, 8, 1> mMPCStatePenalties;
+    Eigen::Matrix<double, 8, 1> mMPCTerminalStatePenalties;
+    Eigen::Matrix<double, 2, 1> mMPCControlPenalties;
 };
 
 //====================================================================
@@ -738,15 +739,15 @@ void MyWindow::computeDDPTrajectory() {
   // Costs
   Cost::StateHessian Q;
   Q.setZero();
-  Q.diagonal() << mDDPStateHessian;
+  Q.diagonal() << mDDPStatePenalties;
 
   Cost::ControlHessian R;
   R.setZero();
-  R.diagonal() << mDDPControlHessian;
+  R.diagonal() << mDDPControlPenalties;
 
   TerminalCost::Hessian Qf;
   Qf.setZero();
-  Qf.diagonal() << mDDPTerminalStateHessian;
+  Qf.diagonal() << mDDPTerminalStatePenalties;
 
   Cost cp_cost(mGoalState, Q, R);
   TerminalCost cp_terminal_cost(mGoalState, Qf);
@@ -794,11 +795,11 @@ void MyWindow::timeStepping() {
     Cost::ControlHessian ctl_R;
     
     ctl_R.setZero();
-    ctl_R.diagonal() << mMPCControlHessian;
+    ctl_R.diagonal() << mMPCControlPenalties;
     Q_mpc.setZero();
-    Q_mpc.diagonal() << mMPCStateHessian;
+    Q_mpc.diagonal() << mMPCStatePenalties;
     Qf_mpc.setZero();
-    Qf_mpc.diagonal() << mMPCTerminalStateHessian;
+    Qf_mpc.diagonal() << mMPCTerminalStatePenalties;
     Cost running_cost_horizon(target_state, Q_mpc, ctl_R);
     TerminalCost terminal_cost_horizon(target_state, Qf_mpc);
     
