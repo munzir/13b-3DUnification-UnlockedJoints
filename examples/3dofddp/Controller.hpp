@@ -143,8 +143,8 @@ public:
   double mKvSpeedReg; 
   double mKpPose, mKvPose;
 
-  double mWEER, mWOrR, mWEEL, mWOrL, mWSpeedReg, mWReg, mWPose;
-  Eigen::Matrix3d mWBal;
+  double mWOrR, mWOrL, mWSpeedReg, mWReg, mWPose;
+  Eigen::Matrix3d mWBal, mWEER, mWEEL;
   Eigen::Matrix<double, 18, 18> mWMatPose;
   Eigen::Matrix<double, 18, 18> mWMatSpeedReg;
   Eigen::Matrix<double, 18, 18> mWMatReg;

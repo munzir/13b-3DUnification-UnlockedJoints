@@ -47,7 +47,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   assert(_RightendEffector != nullptr);
 
   int dof = mRobot->getNumDofs();
-  std::cout << "[controller] DoF: " << dof << std::endl;
+  // std::cout << "[controller] DoF: " << dof << std::endl;
 
   mForces.setZero(19);
 
@@ -73,12 +73,12 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // ************** Remove position limits
   for(int i = 6; i < dof-1; ++i)
     _robot->getJoint(i)->setPositionLimitEnforced(false);
-  std::cout << "Position Limit Enforced set to false" << std::endl;
+  // std::cout << "Position Limit Enforced set to false" << std::endl;
 
   // ************** Set joint damping
   for(int i = 6; i < dof-1; ++i)
     _robot->getJoint(i)->setDampingCoefficient(0, 0.5);
-  std::cout << "Damping coefficients set" << std::endl;
+  // std::cout << "Damping coefficients set" << std::endl;
 
   mdqFilt = new filter(25, 100);
 
@@ -95,6 +95,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
   mKpEE.setZero();
   mKvEE.setZero();
+  mWEER.setZero();
+  mWEEL.setZero();
   mWBal.setZero();
   mWMatPose.setZero();
   mWMatSpeedReg.setZero();
@@ -124,11 +126,19 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     
     // -- Weights
     // Right Arm
-    mWEER = cfg->lookupFloat(scope, "wEER");
+    str = cfg->lookupString(scope, "wEER"); 
+    stream.str(str);
+    for(int i=0; i<3; i++) stream >> mWEER(i, i);
+    stream.clear();
     mWOrR = cfg->lookupFloat(scope, "wOrR");
+    
     // Left Arm
-    mWEEL = cfg->lookupFloat(scope, "wEEL");
+    str = cfg->lookupString(scope, "wEEL"); 
+    stream.str(str);
+    for(int i=0; i<3; i++) stream >> mWEEL(i, i);
+    stream.clear();
     mWOrL = cfg->lookupFloat(scope, "wOrL");
+
     // Balance
     str = cfg->lookupString(scope, "wBal"); 
     stream.str(str);
@@ -164,10 +174,10 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "KvSpeedReg: " << mKvSpeedReg << endl;
   cout << "KpPose: " << mKpPose << endl;
   cout << "KvPose: " << mKvPose << endl;
-  cout << "wEER: " << mWEER << endl;
-  cout << "wEEL: " << mWEEL << endl;
+  cout << "wEER: " << mWEER.diagonal().transpose() << endl;
+  cout << "wEEL: " << mWEEL.diagonal().transpose() << endl;
   // cout << "wBal: " << mWBal(0, 0) << ", " << mWBal(1, 1) << ", " << mWBal(2, 2) << endl;
-  cout << "wBal: " << mWBal << endl;
+  cout << "wBal: " << mWBal.diagonal().transpose() << endl;
   cout << "wMatPoseReg: "; for(int i=0; i<18; i++) cout << mWMatPose(i, i) << ", "; cout << endl;
   cout << "wMatSpeedReg: "; for(int i=0; i<18; i++) cout << mWMatSpeedReg(i, i) << ", "; cout << endl;
   cout << "wMatReg: "; for(int i=0; i<18; i++) cout << mWMatReg(i, i) << ", "; cout << endl;
@@ -740,7 +750,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   const vector<size_t > index{6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
   mRobot->setForces(index, mForces);
 
-  if(mSteps == 1) {
+  if(mSteps < 0) {
     cout << "PEER: " << mPEER.rows() << " x " << mPEER.cols() << endl;
     cout << "PEEL: " << mPEEL.rows() << " x " << mPEEL.cols() << endl;
     cout << "PBal: " << mPBal.rows() << " x " << mPBal.cols() << endl;
@@ -774,6 +784,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     // Print the objective function components 
     cout << "EEL loss: " << pow((mPEEL*mddqBodyRef-mbEEL).norm(), 2) << endl;
     cout << "EER loss: " << pow((mPEER*mddqBodyRef-mbEER).norm(), 2) << endl;
+    cout << "OrL loss: " << pow((mPOrL*mddqBodyRef-mbOrL).norm(), 2) << endl;
+    cout << "OrR loss: " << pow((mPOrR*mddqBodyRef-mbOrR).norm(), 2) << endl;
     cout << "Bal loss: " << pow((mPBal*mddqBodyRef-mbBal).norm(), 2) << endl;
     cout << "Pose loss: " << pow((mPPose*mddqBodyRef-mbPose).norm(), 2) << endl;
     cout << "Speed Reg loss: " << pow((mPSpeedReg*mddqBodyRef-mbSpeedReg).norm(), 2) << endl;
