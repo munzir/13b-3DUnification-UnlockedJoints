@@ -129,7 +129,7 @@ public:
 
   Eigen::Matrix<double, 18, 1> mddqBodyRef;
 
-  double mZCOMInit;
+  double mInitCOMDistance;
 
   Eigen::Matrix<double, 18, 1> mqBodyInit;
 
@@ -144,7 +144,7 @@ public:
   double mKpPose, mKvPose;
 
   double mWEER, mWOrR, mWEEL, mWOrL, mWSpeedReg, mWReg, mWPose;
-  double mWBal;
+  Eigen::Matrix3d mWBal;
   Eigen::Matrix<double, 18, 18> mWMatPose;
   Eigen::Matrix<double, 18, 18> mWMatSpeedReg;
   Eigen::Matrix<double, 18, 18> mWMatReg;
@@ -168,11 +168,12 @@ public:
 
   Eigen::Matrix<double, 3, 18> mPEEL, mPOrL, mPEER, mPOrR;
   Eigen::Matrix<double, 3, 1> mbEEL, mbOrL, mbEER, mbOrR;
-  Eigen::Matrix<double, 1, 18> mPBal;
-  Eigen::Matrix<double, 1, 1> mbBal;
+  Eigen::MatrixXd mPBal;
+  Eigen::VectorXd mbBal;
   Eigen::Matrix<double, 18, 18> mPPose, mPSpeedReg, mPReg;
   Eigen::Matrix<double, 18, 1> mbPose, mbSpeedReg, mbReg;
-
+  bool mCOMAngleControl, mMaintainInitCOMDistance;
+  
 
   Eigen::Matrix<double, 3, 1> mZeroCol;
   Eigen::Matrix<double, 3, 7> mZero7Col;  
