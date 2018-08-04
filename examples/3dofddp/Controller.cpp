@@ -54,21 +54,21 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mSteps = 0;
 
   // *************** Read Initial Pose for Pose Regulation and Generate reference zCOM
-  Eigen::Matrix<double, 25, 1> qInit;
+  Eigen::Matrix<double, 25, 1> qInit; Eigen::Matrix3d Rot0;
   qInit = mRobot->getPositions();
   mBaseTf = mRobot->getBodyNode(0)->getTransform().matrix();
   double psiInit =  atan2(mBaseTf(0,0), -mBaseTf(1,0));
+  Rot0 << cos(psiInit), sin(psiInit), 0,
+          -sin(psiInit), cos(psiInit), 0,
+          0, 0, 1;
   double qBody1Init = atan2(mBaseTf(0,1)*cos(psiInit) + mBaseTf(1,1)*sin(psiInit), mBaseTf(2,1));
   mqBodyInit(0) = qBody1Init;
   mqBodyInit.tail(17) = qInit.tail(17);
   
   dart::dynamics::BodyNode* LWheel = mRobot->getBodyNode("LWheel");
   dart::dynamics::BodyNode* RWheel = mRobot->getBodyNode("RWheel");
-  Eigen::Vector3d bodyCOM = mRobot->getCOM();
-  // Eigen::Vector3d bodyCOM = ( \
-  //   mRobot->getMass()*mRobot->getCOM() - LWheel->getMass()*LWheel->getCOM() - RWheel->getMass()*LWheel->getCOM()) \
-  //   /(mRobot->getMass() - LWheel->getMass() - RWheel->getMass());
-  mZCOMInit = bodyCOM(2) - qInit(5);
+  Eigen::Vector3d bodyCOM = Rot0*(mRobot->getCOM() - qInit.segment(3, 3)); bodyCOM(1) = 0;
+  mInitCOMDistance = bodyCOM.norm();
   
   // ************** Remove position limits
   for(int i = 6; i < dof-1; ++i)
@@ -95,7 +95,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
   mKpEE.setZero();
   mKvEE.setZero();
-  // mWBal.setZero();
+  mWBal.setZero();
   mWMatPose.setZero();
   mWMatSpeedReg.setZero();
   mWMatReg.setZero();
@@ -103,6 +103,10 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   try {
     cfg->parse(configFile);
     
+    // -- COM Angle Based Control or not
+    mCOMAngleControl = cfg->lookupBoolean(scope, "COMAngleControl"); 
+    mMaintainInitCOMDistance = cfg->lookupBoolean(scope, "maintainInitCOMDistance"); 
+
     // -- Torque Limits
     str = cfg->lookupString(scope, "tauLim"); 
     stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
@@ -126,11 +130,10 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     mWEEL = cfg->lookupFloat(scope, "wEEL");
     mWOrL = cfg->lookupFloat(scope, "wOrL");
     // Balance
-    // str = cfg->lookupString(scope, "wBal"); 
-    // stream.str(str);
-    // for(int i=0; i<3; i++) stream >> mWBal(i, i);
-    // stream.clear();
-    mWBal = cfg->lookupFloat(scope, "wBal");
+    str = cfg->lookupString(scope, "wBal"); 
+    stream.str(str);
+    for(int i=0; i<3; i++) stream >> mWBal(i, i);
+    stream.clear();
     // Regulation
     const char* s[] = {"wRegBase", "wRegWaist", "wRegTorso", "wRegKinect", \
      "wRegArm1", "wRegArm2", "wRegArm3", "wRegArm4", "wRegArm5", "wRegArm6", "wRegArm7"};
@@ -151,6 +154,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
       cerr << ex.c_str() << endl;
       cfg->destroy();
   }
+  cout << "COMAngleControl: " << (mCOMAngleControl?"true":"false") << endl; 
+  cout << "maintainInitCOMDistance: " << (mMaintainInitCOMDistance?"true":"false") << endl; 
   cout << "tauLim: " << mTauLim.transpose() << endl;
   cout << "KpEE: " << mKpEE(0,0) << ", " << mKpEE(1,1) << ", " << mKpEE(2,2) << endl;
   cout << "KvEE: " << mKvEE(0,0) << ", " << mKvEE(1,1) << ", " << mKvEE(2,2) << endl;
@@ -167,6 +172,16 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "wMatSpeedReg: "; for(int i=0; i<18; i++) cout << mWMatSpeedReg(i, i) << ", "; cout << endl;
   cout << "wMatReg: "; for(int i=0; i<18; i++) cout << mWMatReg(i, i) << ", "; cout << endl;
   cfg->destroy();
+
+  // PBal and bBal size based on mCOMAngleControl
+  if(mCOMAngleControl) {
+    mPBal = Eigen::MatrixXd::Zero(1, 18);
+    mbBal = Eigen::VectorXd::Zero(1);
+  }
+  else {
+    mPBal = Eigen::MatrixXd::Zero(3, 18);
+    mbBal = Eigen::VectorXd::Zero(3);
+  }
 
   // *********************************** Transform Jacobians
   mJtf.topRightCorner(8, 17) = Eigen::Matrix<double, 8, 17>::Zero(); 
@@ -479,13 +494,13 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
 
 void Controller::setBalanceOptParams(double thref, double dthref, double ddthref){
 
-  static Eigen::Vector3d COM, dCOM, zCOMInitVec, ddCOMref;
+  static Eigen::Vector3d COM, dCOM, COMref, dCOMref, ddCOMref, ddCOMStar;
   static Eigen::Matrix<double, 3, 25> JCOM_full, dJCOM_full;
   static Eigen::Matrix<double, 3, 18> JCOM, dJCOM;
   static Eigen::Matrix<double, 1, 18> Jth, dJth;
   static Eigen::Matrix<double, 1, 3> thVec, dthVec;
-  static double th, th_wrong, dth, ddthStar;
-  
+  static double L, th, th_wrong, dth, ddthStar;
+
   //*********************************** Balance
   // Excluding wheels from COM Calculation
   // Eigen::Vector3d bodyCOM = Rot0*(mRobot->getCOM() - xyz0);
@@ -494,34 +509,48 @@ void Controller::setBalanceOptParams(double thref, double dthref, double ddthref
   // COM, dCOM, JCOM and dJCOM
   COM = mRot0*(mRobot->getCOM()-mxyz0);
   dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
+  
+  // x, dx, ddxStar 
+  COM = mRot0*(mRobot->getCOM()-mxyz0);
+  dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
+  if(mCOMAngleControl) {
+    th = atan2(COM(0), COM(2));
+    dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
+    ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
+  }
+  else {
+    if(mMaintainInitCOMDistance) L = mInitCOMDistance;
+    else L = pow(COM(0)*COM(0)+COM(2)*COM(2), 0.5);
+    COMref << L*sin(thref), 0, L*cos(thref);
+    dCOMref << (L*cos(thref)*dthref), 0.0, (-L*sin(thref)*dthref);
+    ddCOMStar << (-L*sin(thref)*dthref*dthref + L*cos(thref)*ddthref), 0.0, (-L*cos(thref)*dthref*dthref-L*sin(thref)*ddthref);
+  }
+  
+  // Jacobian
   JCOM_full = mRobot->getCOMLinearJacobian();
   JCOM = (mRot0*JCOM_full*mJtf).topRightCorner(3,18); 
-  dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
-  dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
-
-  // x, dx, ddxStar 
-  th = atan2(COM(0), COM(2));
-  th_wrong = atan2(COM(2), COM(0));
-  if(mSteps % 11 == 0){
-    cout << "Xcom: " << std::setprecision(2) << COM(0) << ", Zcom: " << COM(2) << ", th: " << th*180.0/M_PI << ", th_wrong: " << th_wrong*180.0/M_PI;
-    cout << ", thref: " << std::setprecision(2) << thref*180.0/M_PI << ", dthref: " << dthref*180.0/M_PI << ", ddthref: " << ddthref*180.0/M_PI << endl;
+  if(mCOMAngleControl) {
+    thVec << cos(th), 0.0, -sin(th);
+    Jth = (cos(th)*thVec*JCOM)/COM(2);
   }
 
-  dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
-  ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
-  // ddthStar = - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
-
-  // Jacobian
-  thVec << cos(th), 0.0, -sin(th);
-  Jth = (cos(th)*thVec*JCOM)/COM(2);
-
   // Jacobian derivative
-  dthVec << -sin(th), 0.0, -cos(th);
-  dJth = (-sin(th)*thVec*JCOM*dth + cos(th)*dthVec*JCOM*dth + cos(th)*thVec*dJCOM - dCOM(2)*Jth)/COM(2);
+  dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
+  dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
+  if(mCOMAngleControl) {
+    dthVec << -sin(th), 0.0, -cos(th);
+    dJth = (-sin(th)*thVec*JCOM*dth + cos(th)*dthVec*JCOM*dth + cos(th)*thVec*dJCOM - dCOM(2)*Jth)/COM(2);
+  }
 
   // P and b 
-  mPBal << mWBal*Jth;
-  mbBal << mWBal*(-dJth*mdqBody + ddthStar);
+  if(mCOMAngleControl) {
+    mPBal << mWBal(0, 0)*Jth;
+    mbBal << mWBal(0, 0)*(-dJth*mdqBody + ddthStar);
+  }
+  else {
+    mPBal << mWBal*JCOM;
+    mbBal << mWBal*(-dJCOM*mdqBody + ddCOMStar); 
+  }
 }
 
 void Controller::computeDynamics(){

@@ -103,8 +103,6 @@ class MyWindow : public dart::gui::SimWindow {
       cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose() << endl;
       cout << "tauLim: " << mTauLim.transpose() << endl;
       
-      cout << "8" << endl;
-  
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
       mkrang = world->getSkeleton("krang");
@@ -142,11 +140,9 @@ class MyWindow : public dart::gui::SimWindow {
       mL = 0.68;//*6;
       char mpctrajfile[] = "mpc_traj.csv";
       mMPCWriter.open_file(mpctrajfile);
-      cout << "9" << endl;
-
+      
       computeDDPTrajectory();
-      cout << "10" << endl;
-
+      
       mController = new Controller(mkrang, mkrang->getBodyNode("lGripper"), mkrang->getBodyNode("rGripper") ) ;
       
       // Targets for the controller
@@ -706,31 +702,25 @@ Krang3D<double>::State MyWindow::getCurrentState() {
 
 //====================================================================
 void MyWindow::computeDDPTrajectory() {
-  cout << "9a" << endl;
-
+  
   param p; 
   double ixx, iyy, izz, ixy, ixz, iyz; 
   Eigen::Vector3d com;
   Eigen::Matrix3d iMat;      
   Eigen::Matrix3d tMat;
-        cout << "9b" << endl;
-
+  
   dart::dynamics::Frame* baseFrame = m3DOF->getBodyNode("Base");
   p.R = mR; p.L = mL; p.g=9.800000e+00;
-        cout << "9c" << endl;
-
+  
   p.mw = m3DOF->getBodyNode("LWheel")->getMass(); 
-        cout << "9d" << endl;
-
+  
   m3DOF->getBodyNode("LWheel")->getMomentOfInertia(ixx, iyy, izz, ixy, ixz, iyz);
-        cout << "9e" << endl;
-
+  
   p.YYw = ixx; p.ZZw = izz; p.XXw = iyy; // Wheel frame of reference in ddp dynamic model is different from the one in DART
   p.m_1 = m3DOF->getBodyNode("Base")->getMass(); 
   com = m3DOF->getBodyNode("Base")->getCOM(baseFrame);
   p.MX_1 = p.m_1*com(0); p.MY_1 = p.m_1*com(1); p.MZ_1 = p.m_1*com(2);
-        cout << "9f" << endl;
-
+  
   m3DOF->getBodyNode("Base")->getMomentOfInertia(ixx, iyy, izz, ixy, ixz, iyz);
   Eigen::Vector3d s = -com; // Position vector from local COM to body COM expressed in base frame
   iMat << ixx, ixy, ixz, // Inertia tensor of the body around its CoM expressed in body frame
@@ -743,8 +733,7 @@ void MyWindow::computeDDPTrajectory() {
   p.XX_1 = iMat(0,0); p.YY_1 = iMat(1,1); p.ZZ_1 = iMat(2,2);
   p.XY_1 = iMat(0,1); p.YZ_1 = iMat(1,2); p.XZ_1 = iMat(0,2);
   p.fric_1 = m3DOF->getJoint(0)->getDampingCoefficient(0); // Assuming both joints have same friction coeff (Please make sure that is true)
-        cout << "9g" << endl;
-
+  
   CSV_writer<Scalar> writer;
   util::DefaultLogger logger;
   bool verbose = true;
@@ -758,7 +747,7 @@ void MyWindow::computeDDPTrajectory() {
   // Initial state 
   State x0 = getCurrentState();
   x0 << 0, 0, x0(2), 0, 0, 0, 0, 0; 
-  cout << x0 << endl;
+  cout << "initState: " << x0.transpose() << endl;
   // Dynamics::State xf; xf << 2, 0, 0, 0, 0, 0, 0.01, 5;
   // Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
   Dynamics::ControlTrajectory u = Dynamics::ControlTrajectory::Zero(2, time_steps);
@@ -782,12 +771,10 @@ void MyWindow::computeDDPTrajectory() {
   // initialize DDP for trajectory planning
   DDP_Opt trej_ddp (mMPCdt, time_steps, max_iterations, &logger, verbose);
 
-  cout << "9h" << endl;
   // Get initial trajectory from DDP
   OptimizerResult<Dynamics> DDP_traj = trej_ddp.run(x0, u, *mDDPDynamics, cp_cost, cp_terminal_cost);
 
-  cout << "9i" << endl;
-
+  
   mDDPStateTraj = DDP_traj.state_trajectory;
   mDDPControlTraj = DDP_traj.control_trajectory;
 
@@ -1062,38 +1049,50 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
 //====================================================================
 int main(int argc, char* argv[]) {
 
-  // create and initialize the world
-  cout << "1" << endl;
-  // SkeletonPtr threeDOF = create3DOF_URDF();
-  cout << "2" << endl;
-
-    // load skeletons
-  SkeletonPtr floor = createFloor();
-  SkeletonPtr robot = createKrang();
-  cout << "3" << endl;
-
-  SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"));
-  cout << "4" << endl;
-
-  SkeletonPtr cup = createCup(robot->getBodyNode("lGripper")); //cup->setPositions(tray->getPositions());
-  cout << "5" << endl;
-
+  
+  // Create world
   WorldPtr world = std::make_shared<World>();
 
+  // Load Floor
+  SkeletonPtr floor = createFloor();
   world->addSkeleton(floor); //add ground and robot to the world pointer
+
+  // Load robot
+  SkeletonPtr robot = createKrang();
   world->addSkeleton(robot);
-  world->addSkeleton(tray);
-  world->addSkeleton(cup);
-  cout << "6" << endl;
-
-  // create and initialize the world
-  //Eigen::Vector3d gravity(0.0,  -9.81, 0.0);
-  //world->setGravity(gravity);
-  // world->setTimeStep(1.0/1000);
-  cout << "7" << endl; 
-
+  
+  // To load tray and cup or not
+  bool loadTray, loadCup;
+  Configuration *  cfg = Configuration::create();
+  const char *     scope = "";
+  const char *     configFile = "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+  try {
+    cfg->parse(configFile);
+    loadTray = cfg->lookupBoolean(scope, "tray"); 
+    loadCup = cfg->lookupBoolean(scope, "cup"); 
+  } catch(const ConfigurationException & ex) {
+      cerr << ex.c_str() << endl;
+      cfg->destroy();
+  }
+  cout << "loadTray: " << (loadTray?"true":"false") << endl;
+  cout << "loadCup: " << (loadCup?"true":"false") << endl;
+  
+  // Load Tray
+  if(loadTray) {
+    SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"));
+    world->addSkeleton(tray);
+  }
+  
+  // Load Cup
+  if(loadCup) { 
+    SkeletonPtr cup = createCup(robot->getBodyNode("lGripper")); //cup->setPositions(tray->getPositions());
+    world->addSkeleton(cup);
+  }
+  
+  // Create window
   MyWindow window(world);
 
+  // Run the world
   glutInit(&argc, argv);
   window.initWindow(1280,720, "3DOF URDF");
   glutMainLoop();
