@@ -103,6 +103,10 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   try {
     cfg->parse(configFile);
     
+    // -- Torque Limits
+    str = cfg->lookupString(scope, "tauLim"); 
+    stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
+    
     // -- Gains
     mKpEE(0, 0) = cfg->lookupFloat(scope, "KpEE"); mKpEE(1, 1) = mKpEE(0, 0); mKpEE(2, 2) = mKpEE(0, 0);
     mKvEE(0, 0) = cfg->lookupFloat(scope, "KvEE"); mKvEE(1, 1) = mKvEE(0, 0); mKvEE(2, 2) = mKvEE(0, 0);
@@ -147,6 +151,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
       cerr << ex.c_str() << endl;
       cfg->destroy();
   }
+  cout << "tauLim: " << mTauLim.transpose() << endl;
   cout << "KpEE: " << mKpEE(0,0) << ", " << mKpEE(1,1) << ", " << mKpEE(2,2) << endl;
   cout << "KvEE: " << mKvEE(0,0) << ", " << mKvEE(1,1) << ", " << mKvEE(2,2) << endl;
   cout << "KpCOM: " << mKpCOM << endl;
@@ -172,9 +177,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // ******************************** zero Cols
   mZeroCol.setZero();
   mZero7Col.setZero();
-
-  // **************************** Torque Limits
-  mTauLim << 120, 740, 370, 10, 370, 370, 175, 175, 40, 40, 9.5, 370, 370, 175, 175, 40, 40, 9.5;
 }
 
 //=========================================================================
@@ -506,8 +508,8 @@ void Controller::setBalanceOptParams(double thref, double dthref, double ddthref
   }
 
   dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
-  // ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
-  ddthStar = - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
+  ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
+  // ddthStar = - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
 
   // Jacobian
   thVec << cos(th), 0.0, -sin(th);

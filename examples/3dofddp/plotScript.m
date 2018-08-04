@@ -1,5 +1,5 @@
-Aref=csvread('../../build/initial_traj.csv');
-A=csvread('../../build/mpc_traj.csv');
+Aref=csvread('../../build/examples/3dofddp/initial_traj.csv');
+A=csvread('../../build/examples/3dofddp/mpc_traj.csv');
 Aref = Aref(1:length(A), :);
 
 xref=Aref(:,1); psiiref=Aref(:,2); thref=Aref(:,3);
