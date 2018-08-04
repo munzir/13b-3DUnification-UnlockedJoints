@@ -44,7 +44,9 @@ class MyWindow : public dart::gui::SimWindow {
 
       try {
         cfg->parse(configFile);
-        
+
+        mLockedJoints = cfg->lookupBoolean(scope, "lockedJoints"); 
+
         mInitCOMAngle = (cfg->lookupFloat(scope, "initCOMAngle"))*M_PI/180.0;
 
         str = cfg->lookupString(scope, "goalState"); 
@@ -77,17 +79,41 @@ class MyWindow : public dart::gui::SimWindow {
         
         str = cfg->lookupString(scope, "MPCControlPenalties"); 
         stream.str(str); for(int i=0; i<2; i++) stream >> mMPCControlPenalties(i); stream.clear();
+
+        str = cfg->lookupString(scope, "tauLim"); 
+        stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
         
       } catch(const ConfigurationException & ex) {
           cerr << ex.c_str() << endl;
           cfg->destroy();
       }
-
+      cout << "lockedJoints: " << (mLockedJoints? "true":"false") << endl;
+      cout << "initCOMAngle: " << mInitCOMAngle << endl;
+      cout << "goalState: " << mGoalState.transpose() << endl;
+      cout << "finalTime: " << mFinalTime << endl;
+      cout << "DDPMaxIter: " << mDDPMaxIter << endl;
+      cout << "DDPStatePenalties: " << mDDPStatePenalties.transpose() << endl;
+      cout << "DDPTerminalStatePenalties: " << mDDPTerminalStatePenalties.transpose() << endl;
+      cout << "DDPControlPenalties: " << mDDPControlPenalties.transpose() << endl;
+      cout << "beginStep: " << mBeginStep << endl;
+      cout << "MPCMaxIter: " << mMPCMaxIter << endl;
+      cout << "MPCHorizon: " << mMPCHorizon << endl;
+      cout << "MPCStatePenalties: " << mMPCStatePenalties.transpose() << endl;
+      cout << "MPCTerminalStatePenalties: " << mMPCTerminalStatePenalties.transpose() << endl;
+      cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose() << endl;
+      cout << "tauLim: " << mTauLim.transpose() << endl;
+      
       cout << "8" << endl;
   
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
       mkrang = world->getSkeleton("krang");
+      if(mLockedJoints) {
+        int joints = mkrang->getNumJoints();
+        for(int i=3; i < joints; i++) {
+          mkrang->getJoint(i)->setActuatorType(dart::dynamics::Joint::ActuatorType::LOCKED);
+        }
+      }
 
       // Adjust Init COM Angle
       Eigen::Matrix3d baseRot; double psi, qBody1; Eigen::Transform<double, 3, Eigen::Affine> baseTf; Eigen::AngleAxisd aa; Eigen::Matrix<double, 25, 1> q;
@@ -165,7 +191,8 @@ class MyWindow : public dart::gui::SimWindow {
     Eigen::Vector3d mLeftTargetRPY;
     Eigen::Vector3d mRightTargetRPY;
     double mInitCOMAngle;
-
+    bool mLockedJoints;
+    Eigen::Matrix<double, 18, 1> mTauLim;
     // 3DOF robot
     WorldPtr mWorld3dof;
     SkeletonPtr m3DOF;
@@ -815,46 +842,59 @@ void MyWindow::timeStepping() {
 
   }
 
-  double tau_L = 0, tau_R = 0;
   if(mMPCSteps > -1) {
 
-    double thref, dthref, ddthref, tau_0;
-    ddthref = mMPCControlRef(0);
-    tau_0 = mMPCControlRef(1);
-    thref = mMPCStateRef(2);
-    dthref = mMPCStateRef(5);
-    mController->update(mLeftTargetPosition, mRightTargetPosition, mLeftTargetRPY, mRightTargetRPY, thref, dthref, ddthref, tau_0);
+    if(!mLockedJoints) {
+      double thref, dthref, ddthref, tau_0;
+      ddthref = mMPCControlRef(0);
+      tau_0 = mMPCControlRef(1);
+      thref = mMPCStateRef(2);
+      dthref = mMPCStateRef(5);
 
-    // // *************************************** IDEA 2
-    // double ddth = u(0);
-    // double tau_0 = u(1);
-    // State xdot = mDDPDynamics->f(cur_state, u);
-    // double ddx = xdot(3);
-    // double ddpsi = xdot(4);
-    // Eigen::Vector3d ddq, dq;
-    // ddq << ddx, ddpsi, ddth;
-    // dq = cur_state.segment(3,3);
-    // c_forces dy_forces = mDDPDynamics->dynamic_forces(cur_state, u);
-    // //double tau_1 = (dy_forces.A.block<1,3>(2,0)*ddq) + (dy_forces.C.block<1,3>(2,0)*dq) + (dy_forces.Q(2)) - (dy_forces.Gamma_fric(2));
-    // double tau_1 = dy_forces.A.block<1,3>(2,0)*ddq;
-    // tau_1 += dy_forces.C.block<1,3>(2,0)*dq;
-    // tau_1 += dy_forces.Q(2);
-    // tau_1 -= dy_forces.Gamma_fric(2);
-    // tau_L = -0.5*(tau_1+tau_0);
-    // tau_R = -0.5*(tau_1-tau_0);
+      mController->update(mLeftTargetPosition, mRightTargetPosition, mLeftTargetRPY, mRightTargetRPY, thref, dthref, ddthref, tau_0);
+    }
 
-    // double tau_lim = 100.0;
-    // if(abs(tau_L) > tau_lim | abs(tau_R) > tau_lim){
-    //   cout << "step: " << steps << ", tau_0: " << tau_0 << ", tau_1: " << tau_1 << ", tau_L: " << tau_L << ", tau_R: " << tau_R << endl;
-    // }
+    else {
+      double ddth, tau_0, ddx, ddpsi, tau_1, tau_L, tau_R; 
+      State xdot; 
+      Eigen::Vector3d ddq, dq; 
+      c_forces dy_forces;
+      
+      // Control input from High-level Control
+      ddth = mMPCControlRef(0);
+      tau_0 = mMPCControlRef(1);
+      
+      // ddq
+      xdot = mDDPDynamics->f(cur_state, mMPCControlRef);
+      ddx = xdot(3);
+      ddpsi = xdot(4);
+      ddq << ddx, ddpsi, ddth;
+      
+      // dq
+      dq = cur_state.segment(3,3);
+      
+      // A, C, Q and Gamma_fric
+      dy_forces = mDDPDynamics->dynamic_forces(cur_state, mMPCControlRef);
+      
+      // tau_1
+      // tau_1 = (dy_forces.A.block<1,3>(2,0)*ddq) + (dy_forces.C.block<1,3>(2,0)*dq) + (dy_forces.Q(2)) - (dy_forces.Gamma_fric(2));
+      tau_1 = dy_forces.A.block<1,3>(2,0)*ddq; tau_1 += dy_forces.C.block<1,3>(2,0)*dq; tau_1 += dy_forces.Q(2); tau_1 -= dy_forces.Gamma_fric(2);
 
-    // tau_L = min(tau_lim, max(-tau_lim, tau_L));
-    // tau_R = min(tau_lim, max(-tau_lim, tau_R));
+      // Wheel Torques
+      tau_L = -0.5*(tau_1+tau_0);
+      tau_R = -0.5*(tau_1-tau_0);
+      if(abs(tau_L) > mTauLim(0)/2 | abs(tau_R) > mTauLim(0)/2){
+        cout << "step: " << mSteps << ", tau_0: " << tau_0 << ", tau_1: " << tau_1 << ", tau_L: " << tau_L << ", tau_R: " << tau_R << endl;
+      }
+      tau_L = min(mTauLim(0)/2, max(-mTauLim(0)/2, tau_L));
+      tau_R = min(mTauLim(0)/2, max(-mTauLim(0)/2, tau_R));
+      mForces(0) = tau_L;
+      mForces(1) = tau_R;
+      const vector<size_t > index{6, 7};
+      mkrang->setForces(index, mForces);
+    }
   }
-  // mForces(0) = tau_L;
-  // mForces(1) = tau_R;
-  // const vector<size_t > index{6, 7};
-  // mkrang->setForces(index, mForces);
+  
 
   
   SimWindow::timeStepping();
@@ -946,11 +986,6 @@ dart::dynamics::SkeletonPtr createKrang() {
   aa = Eigen::AngleAxisd(baseTf.rotation());
   q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit; 
   krang->setPositions(q);
-
-  // int joints = krang->getNumJoints();
-  // for(int i=3; i < joints; i++) {
-  //   krang->getJoint(i)->setActuatorType(dart::dynamics::Joint::ActuatorType::LOCKED);
-  // }
 
   krang->getJoint(0)->setDampingCoefficient(0, 0.5);
   krang->getJoint(1)->setDampingCoefficient(0, 0.5);
