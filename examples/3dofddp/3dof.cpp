@@ -1062,7 +1062,7 @@ int main(int argc, char* argv[]) {
   world->addSkeleton(robot);
   
   // To load tray and cup or not
-  bool loadTray, loadCup;
+  bool loadTray, loadCup; double trayCupFriction;
   Configuration *  cfg = Configuration::create();
   const char *     scope = "";
   const char *     configFile = "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
@@ -1070,23 +1070,29 @@ int main(int argc, char* argv[]) {
     cfg->parse(configFile);
     loadTray = cfg->lookupBoolean(scope, "tray"); 
     loadCup = cfg->lookupBoolean(scope, "cup"); 
+    trayCupFriction = cfg->lookupFloat(scope, "trayCupFriction");
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
       cfg->destroy();
   }
   cout << "loadTray: " << (loadTray?"true":"false") << endl;
   cout << "loadCup: " << (loadCup?"true":"false") << endl;
+  cout << "trayCupFriction: " << trayCupFriction << endl;
   
   // Load Tray
   if(loadTray) {
     SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"));
     world->addSkeleton(tray);
+    tray->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
+    cout << "tray surface friction: " << tray->getBodyNode(0)->getFrictionCoeff() << endl;
   }
   
   // Load Cup
   if(loadCup) { 
     SkeletonPtr cup = createCup(robot->getBodyNode("lGripper")); //cup->setPositions(tray->getPositions());
     world->addSkeleton(cup);
+    cup->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
+    cout << "cup surface friction: " << cup->getBodyNode(0)->getFrictionCoeff() << endl;
   }
   
   // Create window
