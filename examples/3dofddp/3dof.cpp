@@ -13,6 +13,9 @@
 #include "krangddp.h"
 #include <config4cpp/Configuration.h>
 
+#include <dart/external/lodepng/lodepng.h>
+#include <sys/stat.h>
+
 using namespace std;
 using namespace dart::common;
 using namespace dart::dynamics;
@@ -186,6 +189,8 @@ class MyWindow : public dart::gui::SimWindow {
     void timeStepping() override;
 
     void render() override;
+
+    bool screenshot() override;
 
     ~MyWindow() {}
 
@@ -526,7 +531,7 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
     case 'g':
       mLeftTargetRPY[1] += incremental;
       break;
-    case 'c':
+    case 'B':
       mLeftTargetRPY[2] -= incremental;
       break;
     case 'b':
@@ -969,6 +974,54 @@ void MyWindow::render() {
   }
 
   SimWindow::render();
+}
+
+bool MyWindow::screenshot() {
+  static int count = 0;
+  const char directory[8] = "frames";
+  const char fileBase[8] = "Capture";
+  char fileName[32];
+
+  // create frames directory if not exists
+  using Stat = struct stat;
+  Stat buff;
+
+  if (stat(directory, &buff) != 0)
+    mkdir(directory, 0777);
+
+  if (!S_ISDIR(buff.st_mode))
+  {
+    dtwarn << "[Window::screenshot] 'frames' is not a directory, "
+           << "cannot write a screenshot\n";
+    return false;
+  }
+
+  // png
+  std::snprintf(fileName, sizeof(fileName), "%s%s%s%.4d.png",
+                directory, "/", fileBase, mPlayFrame);
+
+  int tw = glutGet(GLUT_WINDOW_WIDTH);
+  int th = glutGet(GLUT_WINDOW_HEIGHT);
+
+  glReadPixels(0, 0,  tw, th, GL_RGBA, GL_UNSIGNED_BYTE, &mScreenshotTemp[0]);
+
+  // reverse temp2 temp1
+  for (int row = 0; row < th; row++) {
+    memcpy(&mScreenshotTemp2[row * tw * 4],
+           &mScreenshotTemp[(th - row - 1) * tw * 4], tw * 4);
+  }
+
+  unsigned result = lodepng::encode(fileName, mScreenshotTemp2, tw, th);
+
+  // if there's an error, display it
+  if (result) {
+    std::cout << "lodepng error " << result << ": "
+              << lodepng_error_text(result) << std::endl;
+    return false;
+  } else {
+    std::cout << "wrote screenshot " << fileName << "\n";
+    return true;
+  }
 }
 
 //====================================================================

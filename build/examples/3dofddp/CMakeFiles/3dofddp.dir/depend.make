@@ -494,6 +494,7 @@ examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/dyna
 examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/dynamics/detail/TemplatedJacobianNode.hpp
 examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/dynamics/detail/UniversalJointAspect.hpp
 examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/dynamics/dynamics.hpp
+examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/external/lodepng/lodepng.h
 examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/gui/GLFuncs.hpp
 examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/gui/GlutWindow.hpp
 examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o: /usr/local/include/dart/gui/GraphWindow.hpp
