@@ -82,6 +82,8 @@ class MyWindow : public dart::gui::SimWindow {
 
         str = cfg->lookupString(scope, "tauLim"); 
         stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
+
+        mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom"); 
         
       } catch(const ConfigurationException & ex) {
           cerr << ex.c_str() << endl;
@@ -102,6 +104,7 @@ class MyWindow : public dart::gui::SimWindow {
       cout << "MPCTerminalStatePenalties: " << mMPCTerminalStatePenalties.transpose() << endl;
       cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose() << endl;
       cout << "tauLim: " << mTauLim.transpose() << endl;
+      cout << "continuousZoom: " << (mContinuousZoom?"true":"false") << endl;
       
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
@@ -157,6 +160,13 @@ class MyWindow : public dart::gui::SimWindow {
       mRightTargetPosition = Rot0*(mController->getEndEffector("right")->getTransform().translation() - xyz0);
       mLeftTargetRPY = dart::math::matrixToEulerXYZ(Rot0*mController->getEndEffector("left")->getTransform().rotation());
       mRightTargetRPY = dart::math::matrixToEulerXYZ(Rot0*mController->getEndEffector("right")->getTransform().rotation());
+
+      // Camera View
+      mTrackBallRot << 0.370763,  0.897987, -0.236967,
+                  -0.273914,  0.349534,  0.895989,
+                  0.887415, -0.267292,  0.375566;
+      mTrackBall.setQuaternion(Eigen::Quaterniond(mTrackBallRot));
+      mZoom = 0.25;
     }
 
     void drawWorld() const override;
@@ -174,6 +184,8 @@ class MyWindow : public dart::gui::SimWindow {
     void computeDDPTrajectory();
 
     void timeStepping() override;
+
+    void render() override;
 
     ~MyWindow() {}
 
@@ -220,6 +232,10 @@ class MyWindow : public dart::gui::SimWindow {
     Eigen::Matrix<double, 8, 1> mMPCStatePenalties;
     Eigen::Matrix<double, 8, 1> mMPCTerminalStatePenalties;
     Eigen::Matrix<double, 2, 1> mMPCControlPenalties;
+
+    // Camera motion
+    Eigen::Matrix3d mTrackBallRot;
+    bool mContinuousZoom;
 };
 
 //====================================================================
@@ -413,12 +429,28 @@ void MyWindow::drawWorld() const {
     // mRI->drawEllipsoid(Eigen::Vector3d(0.05, 0.05, 0.05));
     // mRI->popMatrix();   
 
+    // Draw COM
     mRI->setPenColor(Eigen::Vector3d(0.2, 0.2, 0.8));
     mRI->pushMatrix();
     mRI->translate(mWorld->getSkeleton("krang")->getCOM());
     mRI->drawEllipsoid(Eigen::Vector3d(0.05, 0.05, 0.05));
     mRI->popMatrix();    
-    
+
+    // Draw Scale along x-axis
+    mRI->setPenColor(Eigen::Vector3d(0.9, 0.7, 0.7));
+    mRI->pushMatrix();
+    mRI->translate(Eigen::Vector3d(2.5, 0.0, 0.0));
+    mRI->drawCube(Eigen::Vector3d(5, 0.01, 0.01));
+    mRI->popMatrix();
+
+    mRI->setPenColor(Eigen::Vector3d(0.9, 0.7, 0.7));
+    for(int i=0; i<=5; i++) {
+      mRI->pushMatrix();
+      mRI->translate(Eigen::Vector3d(i, 0.0, 0.0));
+      mRI->drawCube(Eigen::Vector3d(0.01, 1, 0.01));
+      mRI->popMatrix();
+    }
+
 
   }
 
@@ -463,10 +495,10 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
       mLeftTargetPosition[2] += incremental;
       break;
     
-    case '[':
+    case '-':
       mRightTargetPosition[0] -= incremental;
       break;
-    case ']':
+    case '=':
       mRightTargetPosition[0] += incremental;
       break;
     case ';':
@@ -785,6 +817,35 @@ void MyWindow::computeDDPTrajectory() {
 void MyWindow::timeStepping() {
   mSteps++;
 
+  // Camera View Update (should move with the base frame)
+  if(mContinuousZoom){
+    mZoom = min(0.25, max(0.11, 0.25+((0.25-0.11)/(0-3200))*mSteps));
+    glutPostRedisplay();
+  }
+  else {
+    if(mSteps == 800) { mZoom = 0.215; glutPostRedisplay(); }
+    else if(mSteps == 1600) {mZoom = 0.18; glutPostRedisplay(); }
+    else if(mSteps == 2400) {mZoom = 0.145; glutPostRedisplay(); }
+    else if(mSteps == 3200) {mZoom = 0.11; glutPostRedisplay(); }
+  }
+  
+  
+  // if((mSteps-1)%10 == 1) {
+  //   cout << "mTrans: " << mTrans.transpose() << endl;
+  //   cout << "mEye: " << mEye.transpose() << endl; 
+  //   cout << "mUp: " << mUp.transpose() << endl;
+  //   cout << "mZoom: " << mZoom << endl;
+  //   cout << "mPersp: " << mPersp << endl;
+  //   cout << "mRotate: " << mRotate << endl;
+  //   cout << "mTranslate: " << mTranslate << endl;
+  //   cout << "mZooming: " << mZooming << endl;
+  //   cout << "Trackball Center: " << mTrackBall.getCenter().transpose() << endl;
+  //   cout << "Trackball Quaternion: " << endl << mTrackBall.getCurrQuat().toRotationMatrix() << endl;
+  //   cout << "Trackball Radius: " << mTrackBall.getRadius() << endl;
+  //   cout << "Trackball Rotation Matrix: " << endl << mTrackBall.getRotationMatrix() << endl;
+  // }
+  
+
   getSimple(m3DOF, mkrang);
   State cur_state = getCurrentState(); 
 
@@ -885,6 +946,29 @@ void MyWindow::timeStepping() {
 
   
   SimWindow::timeStepping();
+}
+
+//====================================================================
+void MyWindow::render() {
+
+  // Camera View Update (should move with the base frame)
+  int steps;
+  if(mPlayFrame) { steps = mPlayFrame; }
+  else { steps = mWorld->getTime()*1000; }
+  
+  if(mContinuousZoom){
+    mZoom = min(0.25, max(0.11, 0.25+((0.25-0.11)/(0-3200))*steps));
+    glutPostRedisplay();
+  }
+  else {
+    if(steps < 800) { mZoom = 0.25; glutPostRedisplay(); }
+    else if(steps < 1600) {mZoom = 0.215; glutPostRedisplay(); }
+    else if(steps < 2400) {mZoom = 0.18; glutPostRedisplay(); }
+    else if(steps < 3200) {mZoom = 0.145; glutPostRedisplay(); }
+    else if(steps > 3200) {mZoom = 0.11; glutPostRedisplay(); }
+  }
+
+  SimWindow::render();
 }
 
 //====================================================================
