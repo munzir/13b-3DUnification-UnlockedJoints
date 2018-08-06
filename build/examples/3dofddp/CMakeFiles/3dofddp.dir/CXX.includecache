@@ -1521,6 +1521,10 @@ krangddp.h
 /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/krangddp.h
 config4cpp/Configuration.h
 -
+dart/external/lodepng/lodepng.h
+-
+sys/stat.h
+-
 
 /home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.cpp
 Controller.hpp
@@ -3279,6 +3283,20 @@ dart/dynamics/EllipsoidShape.hpp
 /usr/local/include/dart/dynamics/dart/dynamics/EllipsoidShape.hpp
 dart/dynamics/ShapeFrame.hpp
 /usr/local/include/dart/dynamics/dart/dynamics/ShapeFrame.hpp
+
+/usr/local/include/dart/external/lodepng/lodepng.h
+string.h
+-
+vector
+-
+string
+-
+lodepng.h
+/usr/local/include/dart/external/lodepng/lodepng.h
+iostream
+-
+lodepng.h
+/usr/local/include/dart/external/lodepng/lodepng.h
 
 /usr/local/include/dart/gui/GLFuncs.hpp
 string
