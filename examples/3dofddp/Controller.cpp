@@ -106,6 +106,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   try {
     cfg->parse(configFile);
     
+    // Waist Locked?
+    mWaistLocked = cfg->lookupBoolean(scope, "waistLocked"); 
+
     // -- COM Angle Based Control or not
     mCOMAngleControl = cfg->lookupBoolean(scope, "COMAngleControl"); 
     mMaintainInitCOMDistance = cfg->lookupBoolean(scope, "maintainInitCOMDistance"); 
@@ -127,14 +130,16 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     
     // -- Weights
     // Right Arm
-    str = cfg->lookupString(scope, "wEER"); 
+    if(mWaistLocked) str = cfg->lookupString(scope, "wEERWaistLocked"); 
+    else str = cfg->lookupString(scope, "wEER"); 
     stream.str(str);
     for(int i=0; i<3; i++) stream >> mWEER(i, i);
     stream.clear();
     mWOrR = cfg->lookupFloat(scope, "wOrR");
     
     // Left Arm
-    str = cfg->lookupString(scope, "wEEL"); 
+    if(mWaistLocked) str = cfg->lookupString(scope, "wEELWaistLocked"); 
+    else str = cfg->lookupString(scope, "wEEL"); 
     stream.str(str);
     for(int i=0; i<3; i++) stream >> mWEEL(i, i);
     stream.clear();
@@ -161,8 +166,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
       }
       stream.clear();
     }
-    // Waist Locked?
-    mWaistLocked = cfg->lookupBoolean(scope, "waistLocked"); 
+    
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
       cfg->destroy();
@@ -736,7 +740,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   // inequalityconstraintParams[1].P.row(1) = 0.5*mMM.row(0);
   // inequalityconstraintParams[1].b(1) = -mhh(0)/2 + mTauLim(0)/2 - mR/mL*tau_0;
 
-  const vector<double> inequalityconstraintTol(18, 1e-3);
+  const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
   OptParams inequalityconstraintParams[2];
   inequalityconstraintParams[0].P = mMM;
   inequalityconstraintParams[1].P = -mMM;
@@ -766,7 +770,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   Eigen::VectorXd bodyTorques = mMM*mddqBodyRef + mhh;
   mForces(0) = -mR/mL*tau_0 - bodyTorques(0)/2;
   mForces(1) =  mR/mL*tau_0 - bodyTorques(0)/2;
-  mForces.tail(17) = bodyTorques.tail(17);
+  mForces.tail(mOptDim-1) = bodyTorques.tail(mOptDim-1);
 
   const vector<size_t > index{6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
   mRobot->setForces(index, mForces);
