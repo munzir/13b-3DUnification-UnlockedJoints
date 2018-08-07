@@ -178,10 +178,10 @@ public:
   Eigen::Matrix<double, 3, 1> mZeroCol;
   Eigen::Matrix<double, 3, 7> mZero7Col;  
 
-  Eigen::Matrix<double, 18, 18> mMM;
-  Eigen::Matrix<double, 18, 1> mhh;
+  Eigen::MatrixXd mMM;
+  Eigen::VectorXd mhh;
 
-  Eigen::Matrix<double, 18, 1> mTauLim;
+  Eigen::VectorXd mTauLim;
 
   bool maxTimeSet = 0;
 
