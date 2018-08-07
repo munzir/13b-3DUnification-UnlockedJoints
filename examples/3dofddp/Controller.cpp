@@ -676,15 +676,15 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   
   // ***************************** QP
   OptParams optParams;
-  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mPEER.cols() );
-  P << mPEER,
-       mPOrR,
-       mPEEL,
-       mPOrL,
-       mPBal,
-       mPPose,
-       mPSpeedReg,
-       mPReg;
+  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mOptDim);
+  P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim-1),
+       mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim-1),
+       mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim-1),
+       mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim-1),
+       mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim-1),
+       mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim-1),
+       mPSpeedReg.col(0), mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim-1),
+       mPReg.col(0), mPReg.topRightCorner(mPReg.rows(), mOptDim-1);
   
   Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() + mbReg.rows(), mbEER.cols() );
   b << mbEER,
