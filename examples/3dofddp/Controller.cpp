@@ -160,6 +160,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
       }
       stream.clear();
     }
+    // Waist Locked?
+    mWaistLocked = cfg->lookupBoolean(scope, "waistLocked"); 
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
       cfg->destroy();
@@ -181,6 +183,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "wMatPoseReg: "; for(int i=0; i<18; i++) cout << mWMatPose(i, i) << ", "; cout << endl;
   cout << "wMatSpeedReg: "; for(int i=0; i<18; i++) cout << mWMatSpeedReg(i, i) << ", "; cout << endl;
   cout << "wMatReg: "; for(int i=0; i<18; i++) cout << mWMatReg(i, i) << ", "; cout << endl;
+  cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl; 
   cfg->destroy();
 
   // PBal and bBal size based on mCOMAngleControl
@@ -192,6 +195,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     mPBal = Eigen::MatrixXd::Zero(3, 18);
     mbBal = Eigen::VectorXd::Zero(3);
   }
+
+
 
   // *********************************** Transform Jacobians
   mJtf.topRightCorner(8, 17) = Eigen::Matrix<double, 8, 17>::Zero(); 
