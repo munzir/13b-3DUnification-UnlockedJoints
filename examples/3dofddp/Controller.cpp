@@ -92,7 +92,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   const char * str;
   std::istringstream stream;
   double newDouble;
-
+  Eigen::Matrix<double, 18, 1> tauLim;
+  
   mKpEE.setZero();
   mKvEE.setZero();
   mWEER.setZero();
@@ -111,7 +112,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
     // -- Torque Limits
     str = cfg->lookupString(scope, "tauLim"); 
-    stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
+    stream.str(str); for(int i=0; i<18; i++) stream >> tauLim(i); stream.clear();
     
     // -- Gains
     mKpEE(0, 0) = cfg->lookupFloat(scope, "KpEE"); mKpEE(1, 1) = mKpEE(0, 0); mKpEE(2, 2) = mKpEE(0, 0);
@@ -212,6 +213,11 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   if(mWaistLocked) mOptDim = 17;
   else mOptDim = 18;
   mddqBodyRef = Eigen::VectorXd::Zero(mOptDim);
+  mMM = Eigen::MatrixXd::Zero(mOptDim, mOptDim);
+  mhh = Eigen::VectorXd::Zero(mOptDim);
+  mTauLim = Eigen::VectorXd::Zero(mOptDim);
+  mTauLim << tauLim(0), 
+             tauLim.tail(mOptDim-1);
 }
 
 //=========================================================================
@@ -603,8 +609,12 @@ void Controller::computeDynamics(){
   B << axq/(mR*axx), Eigen::Matrix<double, 18, 17>::Zero();
   pre = Eigen::Matrix<double, 18, 18>::Identity() - beta*B;
   PP << -pre*axq/axx, pre;
-  mMM = pre*A_qq;
-  mhh = PP*h_without_psi_equation;
+  MM = pre*A_qq;
+  hh = PP*h_without_psi_equation;
+  mMM << MM(0, 0), MM.topRightCorner(1, mOptDim-1),
+         MM.bottomLeftCorner(mOptDim-1, 1), MM.bottomRightCorner(mOptDim-1, mOptDim-1);
+  mhh << hh(0),
+         hh.tail(mOptDim-1);
   if(mSteps < 0) {
     cout << "axx: " << axx << endl;
     cout << "axq: "; for(int i = 0; i < axq.rows(); i++) for(int j = 0; j < axq.cols(); j++) cout << axq(i, j) << ", "; cout << endl;
