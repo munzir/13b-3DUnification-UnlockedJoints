@@ -184,6 +184,8 @@ public:
   Eigen::Matrix<double, 18, 1> mTauLim;
 
   bool maxTimeSet = 0;
+
+  bool mWaistLocked;
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_

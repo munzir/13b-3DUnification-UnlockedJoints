@@ -87,6 +87,8 @@ class MyWindow : public dart::gui::SimWindow {
         stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
 
         mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom"); 
+
+        mWaistLocked = cfg->lookupBoolean(scope, "waistLocked"); 
         
       } catch(const ConfigurationException & ex) {
           cerr << ex.c_str() << endl;
@@ -108,7 +110,8 @@ class MyWindow : public dart::gui::SimWindow {
       cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose() << endl;
       cout << "tauLim: " << mTauLim.transpose() << endl;
       cout << "continuousZoom: " << (mContinuousZoom?"true":"false") << endl;
-      
+      cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl; 
+
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
       mkrang = world->getSkeleton("krang");
@@ -117,6 +120,9 @@ class MyWindow : public dart::gui::SimWindow {
         for(int i=3; i < joints; i++) {
           mkrang->getJoint(i)->setActuatorType(dart::dynamics::Joint::ActuatorType::LOCKED);
         }
+      }
+      else if(mWaistLocked) {
+        mkrang->getJoint("JWaist")->setActuatorType(dart::dynamics::Joint::ActuatorType::LOCKED);
       }
 
       // Adjust Init COM Angle
@@ -206,6 +212,8 @@ class MyWindow : public dart::gui::SimWindow {
     double mInitCOMAngle;
     bool mLockedJoints;
     Eigen::Matrix<double, 18, 1> mTauLim;
+    bool mWaistLocked;
+
     // 3DOF robot
     WorldPtr mWorld3dof;
     SkeletonPtr m3DOF;
