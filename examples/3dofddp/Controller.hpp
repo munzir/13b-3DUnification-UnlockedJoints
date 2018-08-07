@@ -127,7 +127,7 @@ public:
 
   size_t mSteps;
 
-  Eigen::Matrix<double, 18, 1> mddqBodyRef;
+  Eigen::VectorXd mddqBodyRef;
 
   double mInitCOMDistance;
 
@@ -186,6 +186,7 @@ public:
   bool maxTimeSet = 0;
 
   bool mWaistLocked;
+  int mOptDim; // dimension of QP optimization decision variable
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_

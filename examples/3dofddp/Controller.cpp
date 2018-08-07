@@ -207,6 +207,11 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // ******************************** zero Cols
   mZeroCol.setZero();
   mZero7Col.setZero();
+
+  // **************************** if waist locked, dimesion of decision variable in QP should be reduced by one
+  if(mWaistLocked) mOptDim = 17;
+  else mOptDim = 18;
+  mddqBodyRef = Eigen::VectorXd::Zero(mOptDim);
 }
 
 //=========================================================================
@@ -242,7 +247,7 @@ void constraintFunc(unsigned m, double *result, unsigned n, const double* x, dou
   }
   // std::cout << "done with gradient" << std::endl;
 
-  Eigen::Matrix<double, 18, 1> X;
+  Eigen::MatrixXd X = Eigen::VectorXd::Zero(n);
   for(size_t i=0; i<n; i++) X(i) = x[i];
   //std::cout << "done reading x" << std::endl;
   
@@ -258,11 +263,14 @@ void constraintFunc(unsigned m, double *result, unsigned n, const double* x, dou
 double optFunc(const std::vector<double> &x, std::vector<double> &grad, void *my_func_data) {
   OptParams* optParams = reinterpret_cast<OptParams *>(my_func_data);
   //std::cout << "done reading optParams " << std::endl;
-  Eigen::Matrix<double, 18, 1> X(x.data());
+  // Eigen::Matrix<double, 18, 1> X(x.data());
+  size_t n = x.size();
+  Eigen::VectorXd X = Eigen::VectorXd::Zero(n);
+  for(int i=0; i<n; i++) X(i) = x[i];
   //std::cout << "done reading x" << std::endl;
   
   if (!grad.empty()) {
-    Eigen::Matrix<double, 18, 1> mGrad = optParams->P.transpose()*(optParams->P*X - optParams->b);
+    Eigen::MatrixXd mGrad = optParams->P.transpose()*(optParams->P*X - optParams->b);
     //std::cout << "done calculating gradient" << std::endl;
     Eigen::VectorXd::Map(&grad[0], mGrad.size()) = mGrad;
     //std::cout << "done changing gradient cast" << std::endl;
@@ -727,14 +735,14 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
 
   
   //nlopt::opt opt(nlopt::LN_COBYLA, 30);
-  nlopt::opt opt(nlopt::LD_SLSQP, 18);
+  nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
   double minf;
   opt.set_min_objective(optFunc, &optParams);
   opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[0], inequalityconstraintTol);
   opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[1], inequalityconstraintTol);
   opt.set_xtol_rel(1e-3);
   if(maxTimeSet) opt.set_maxtime(0.01);
-  vector<double> ddqBodyRef_vec(18);
+  vector<double> ddqBodyRef_vec(mOptDim);
   Eigen::VectorXd::Map(&ddqBodyRef_vec[0], mddqBodyRef.size()) = mddqBodyRef;
   try{
     nlopt::result result = opt.optimize(ddqBodyRef_vec, minf);
@@ -742,9 +750,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   catch(std::exception &e) {
       // std::cout << "nlopt failed: " << e.what() << std::endl;
   }
-  Eigen::Matrix<double, 18, 1> ddqBodyRefTemp(ddqBodyRef_vec.data());
-  mddqBodyRef = ddqBodyRefTemp;
-
+  for(int i=0; i<mOptDim; i++) mddqBodyRef(i) = ddqBodyRef_vec[i];
 
   // ************************************ Torques
   Eigen::VectorXd bodyTorques = mMM*mddqBodyRef + mhh;
