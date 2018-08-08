@@ -742,14 +742,26 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   
   
   // set Regulation Opt Params
-  mPPose = mWMatPose;
-  mbPose << mWMatPose*(-mKpPose*(mqBody - mqBodyInit) - mKvPose*mdqBody);
-  
-  mPSpeedReg = mWMatSpeedReg;
-  mbSpeedReg << -mWMatSpeedReg*mKvSpeedReg*mdqBody;
-  
-  mPReg = mWMatReg;
-  mbReg.setZero();
+  if(!mInverseKinematicsOnArms) {
+    mPPose = mWMatPose;
+    mbPose << mWMatPose*(-mKpPose*(mqBody - mqBodyInit) - mKvPose*mdqBody);
+    
+    mPSpeedReg = mWMatSpeedReg;
+    mbSpeedReg << -mWMatSpeedReg*mKvSpeedReg*mdqBody;
+    
+    mPReg = mWMatReg;
+    mbReg.setZero();
+  } 
+  else {
+    mPPose = mWMatPose;
+    mbPose << mWMatPose*(-mKpPose*(mqBody - mqBodyInit));
+    
+    mPSpeedReg = mWMatSpeedReg;
+    mbSpeedReg.setZero();
+    
+    mPReg = mWMatReg;
+    mbReg = mWMatReg*mdqBody;
+  }
 
   // set mMM and mhh
   // Needs mRobot, mJtf, mdJtf, mdqMin, mR
