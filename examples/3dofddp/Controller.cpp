@@ -166,6 +166,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
       }
       stream.clear();
     }
+
+    mInverseKinematicsOnArms = cfg->lookupBoolean(scope, "inverseKinematicsOnArms"); 
     
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
@@ -189,6 +191,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "wMatSpeedReg: "; for(int i=0; i<18; i++) cout << mWMatSpeedReg(i, i) << ", "; cout << endl;
   cout << "wMatReg: "; for(int i=0; i<18; i++) cout << mWMatReg(i, i) << ", "; cout << endl;
   cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl; 
+  cout << "inverseKinematicsOnArms: " << (mInverseKinematicsOnArms?"true":"false") << endl; 
   cfg->destroy();
 
   // PBal and bBal size based on mCOMAngleControl
