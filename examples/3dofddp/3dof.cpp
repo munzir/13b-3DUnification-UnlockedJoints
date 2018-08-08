@@ -176,6 +176,7 @@ class MyWindow : public dart::gui::SimWindow {
                   0.887415, -0.267292,  0.375566;
       mTrackBall.setQuaternion(Eigen::Quaterniond(mTrackBallRot));
       mZoom = 0.25;
+
     }
 
     void drawWorld() const override;
@@ -245,6 +246,7 @@ class MyWindow : public dart::gui::SimWindow {
     Eigen::Matrix<double, 8, 1> mMPCStatePenalties;
     Eigen::Matrix<double, 8, 1> mMPCTerminalStatePenalties;
     Eigen::Matrix<double, 2, 1> mMPCControlPenalties;
+    double mthref, mdthref;
 
     // Camera motion
     Eigen::Matrix3d mTrackBallRot;
@@ -897,22 +899,24 @@ void MyWindow::timeStepping() {
     results_horizon = ddp_horizon.run_horizon(cur_state, hor_control, hor_traj_states, *mDDPDynamics, running_cost_horizon, terminal_cost_horizon);
     mMPCControlRef = results_horizon.control_trajectory.col(0);
     mMPCStateRef = results_horizon.state_trajectory.col(1);
-
+    mthref = mMPCStateRef(2);
+    mdthref = mMPCStateRef(5);
 
     mMPCWriter.save_step(cur_state, mMPCControlRef);
 
+    
   }
 
   if(mMPCSteps > -1) {
 
     if(!mLockedJoints) {
-      double thref, dthref, ddthref, tau_0;
+      double ddthref, tau_0;
       ddthref = mMPCControlRef(0);
       tau_0 = mMPCControlRef(1);
-      thref = mMPCStateRef(2);
-      dthref = mMPCStateRef(5);
-
-      mController->update(mLeftTargetPosition, mRightTargetPosition, mLeftTargetRPY, mRightTargetRPY, thref, dthref, ddthref, tau_0);
+      mdthref += ddthref*mWorld->getTimeStep();
+      if(mSteps == 20) {cout << "world's dt: " << mWorld->getTimeStep() << endl;}
+      mthref += mdthref*mWorld->getTimeStep();
+      mController->update(mLeftTargetPosition, mRightTargetPosition, mLeftTargetRPY, mRightTargetRPY, mthref, mdthref, ddthref, tau_0);
     }
 
     else {
