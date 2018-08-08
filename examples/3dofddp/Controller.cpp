@@ -170,6 +170,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     mInverseKinematicsOnArms = cfg->lookupBoolean(scope, "inverseKinematicsOnArms"); 
 
     mCOMPDControl = cfg->lookupBoolean(scope, "COMPDControl"); 
+
+    mCOMControlInLowLevel = cfg->lookupBoolean(scope, "COMControlInLowLevel"); 
+    if(!mCOMControlInLowLevel) mWBal.setZero();
     
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
@@ -194,6 +197,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "wMatReg: "; for(int i=0; i<18; i++) cout << mWMatReg(i, i) << ", "; cout << endl;
   cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl; 
   cout << "inverseKinematicsOnArms: " << (mInverseKinematicsOnArms?"true":"false") << endl; 
+  cout << "COMControlInLowLevel: " << (mCOMControlInLowLevel?"true":"false") << endl; 
   cfg->destroy();
 
   // PBal and bBal size based on mCOMAngleControl
@@ -810,7 +814,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     for(int i=0; i<mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];  
 
     optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
-    optParamsID.b = mKvSpeedReg*(mdqBody - mdqBodyRef);
+    optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
   }
   else {
     optParamsID = optParams;
@@ -879,8 +883,14 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     const vector<size_t > dqIndex{11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
 
-    const vector<size_t > forceIndex{6, 7, 8, 9, 10};
-    mRobot->setForces(forceIndex, mForces.head(5));
+    if(mCOMControlInLowLevel) {
+      const vector<size_t > forceIndex{6, 7, 8, 9, 10};
+      mRobot->setForces(forceIndex, mForces.head(5));
+    }
+    else {
+      const vector<size_t > dqIndex2{8, 9, 10};
+      mRobot->setVelocities(dqIndex2, mdqBodyRef.segment(2, 3));
+    }
   } 
   else {
     const vector<size_t > index{6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};

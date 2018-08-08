@@ -190,6 +190,8 @@ public:
 
   bool mInverseKinematicsOnArms;
   bool mCOMPDControl;
+
+  bool mCOMControlInLowLevel;
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
