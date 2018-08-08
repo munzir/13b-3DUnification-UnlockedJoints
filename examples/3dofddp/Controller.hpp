@@ -127,7 +127,7 @@ public:
 
   size_t mSteps;
 
-  Eigen::VectorXd mddqBodyRef;
+  Eigen::VectorXd mddqBodyRef, mdqBodyRef;
 
   double mInitCOMDistance;
 

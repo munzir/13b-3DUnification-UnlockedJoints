@@ -222,6 +222,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   if(mWaistLocked) mOptDim = 17;
   else mOptDim = 18;
   mddqBodyRef = Eigen::VectorXd::Zero(mOptDim);
+  mdqBodyRef = Eigen::VectorXd::Zero(mOptDim);
   mMM = Eigen::MatrixXd::Zero(mOptDim, mOptDim);
   mhh = Eigen::VectorXd::Zero(mOptDim);
   mTauLim = Eigen::VectorXd::Zero(mOptDim);
@@ -768,7 +769,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   computeDynamics();
   
   // ***************************** QP
-  OptParams optParams;
+  OptParams optParams, optParamsID;
   Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mOptDim);
   P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim-1),
        mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim-1),
@@ -791,7 +792,31 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   optParams.P = P;
   optParams.b = b;
 
-  // mTauLim = 1.6*mTauLim;
+  // Optimization for inverse Kinematics
+  if(mInverseKinematicsOnArms) {
+    nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
+    double minf;
+    opt.set_min_objective(optFunc, &optParams);
+    opt.set_xtol_rel(1e-3);
+    if(maxTimeSet) opt.set_maxtime(0.01);
+    vector<double> dqBodyRef_vec(mOptDim);
+    Eigen::VectorXd::Map(&dqBodyRef_vec[0], mdqBodyRef.size()) = mdqBodyRef;
+    try{
+      nlopt::result result = opt.optimize(dqBodyRef_vec, minf);
+    }
+    catch(std::exception &e) {
+        // std::cout << "nlopt failed: " << e.what() << std::endl;
+    }
+    for(int i=0; i<mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];  
+
+    optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
+    optParamsID.b = mKvSpeedReg*(mdqBody - mdqBodyRef);
+  }
+  else {
+    optParamsID = optParams;
+  }
+
+  // Spin Based Constraints
   // const vector<double> inequalityconstraintTol(19, 1e-3);
   // OptParams inequalityconstraintParams[2];
   // inequalityconstraintParams[0].P = Eigen::MatrixXd::Zero(19, 18);
@@ -830,7 +855,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   //nlopt::opt opt(nlopt::LN_COBYLA, 30);
   nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
   double minf;
-  opt.set_min_objective(optFunc, &optParams);
+  opt.set_min_objective(optFunc, &optParamsID);
   opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[0], inequalityconstraintTol);
   opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[1], inequalityconstraintTol);
   opt.set_xtol_rel(1e-3);
@@ -850,9 +875,17 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   mForces(0) = -mR/mL*tau_0 - bodyTorques(0)/2;
   mForces(1) =  mR/mL*tau_0 - bodyTorques(0)/2;
   mForces.tail(mOptDim-1) = bodyTorques.tail(mOptDim-1);
+  if(mInverseKinematicsOnArms){
+    const vector<size_t > dqIndex{11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+    mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
 
-  const vector<size_t > index{6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
-  mRobot->setForces(index, mForces);
+    const vector<size_t > forceIndex{6, 7, 8, 9, 10};
+    mRobot->setForces(forceIndex, mForces.head(5));
+  } 
+  else {
+    const vector<size_t > index{6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+    mRobot->setForces(index, mForces);
+  }
 
   if(mSteps < 0) {
     cout << "PEER: " << mPEER.rows() << " x " << mPEER.cols() << endl;
