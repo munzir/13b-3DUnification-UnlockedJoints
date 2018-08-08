@@ -89,6 +89,8 @@ class MyWindow : public dart::gui::SimWindow {
         mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom"); 
 
         mWaistLocked = cfg->lookupBoolean(scope, "waistLocked"); 
+
+        mCOMControlInLowLevel = cfg->lookupBoolean(scope, "COMControlInLowLevel"); 
         
       } catch(const ConfigurationException & ex) {
           cerr << ex.c_str() << endl;
@@ -111,7 +113,7 @@ class MyWindow : public dart::gui::SimWindow {
       cout << "tauLim: " << mTauLim.transpose() << endl;
       cout << "continuousZoom: " << (mContinuousZoom?"true":"false") << endl;
       cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl; 
-
+      cout << "COMControlInLowLevel: " << (mCOMControlInLowLevel?"true":"false") << endl; 
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
       mkrang = world->getSkeleton("krang");
@@ -251,6 +253,9 @@ class MyWindow : public dart::gui::SimWindow {
     // Camera motion
     Eigen::Matrix3d mTrackBallRot;
     bool mContinuousZoom;
+
+    bool mCOMControlInLowLevel;
+
 };
 
 //====================================================================
@@ -919,7 +924,7 @@ void MyWindow::timeStepping() {
       mController->update(mLeftTargetPosition, mRightTargetPosition, mLeftTargetRPY, mRightTargetRPY, mthref, mdthref, ddthref, tau_0);
     }
 
-    else {
+    if(mLockedJoints | !mCOMControlInLowLevel) {
       double ddth, tau_0, ddx, ddpsi, tau_1, tau_L, tau_R; 
       State xdot; 
       Eigen::Vector3d ddq, dq; 
