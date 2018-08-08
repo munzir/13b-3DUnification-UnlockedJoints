@@ -365,7 +365,7 @@ void Controller::updateTransformJacobian() {
 
 void Controller::setLeftArmOptParams(const Eigen::Vector3d& _LeftTargetPosition){
 
-  static Eigen::Vector3d xEELref, xEEL, dxEEL, ddxEELref;
+  static Eigen::Vector3d xEELref, xEEL, dxEEL, ddxEELref, dxref;
   static Eigen::Matrix<double, 3, 15> JEEL_small, dJEEL_small;
   static Eigen::Matrix<double, 3, 25> JEEL_full, dJEEL_full;
   static Eigen::Matrix<double, 3, 18> JEEL, dJEEL;
@@ -373,12 +373,17 @@ void Controller::setLeftArmOptParams(const Eigen::Vector3d& _LeftTargetPosition)
   xEELref = _LeftTargetPosition;
   if(mSteps == 1) { 
     cout << "xEELref: " << xEELref(0) << ", " << xEELref(1) << ", " << xEELref(2) << endl;
-   }
+  }
 
   // x, dx, ddxref
   xEEL = mRot0*(mLeftEndEffector->getTransform().translation() - mxyz0);
-  dxEEL = mRot0*(mLeftEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mLeftEndEffector->getTransform().translation() - mxyz0);
-  ddxEELref = -mKpEE*(xEEL - xEELref) - mKvEE*dxEEL;
+  if(!mInverseKinematicsOnArms) { 
+    dxEEL = mRot0*(mLeftEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mLeftEndEffector->getTransform().translation() - mxyz0);
+    ddxEELref = -mKpEE*(xEEL - xEELref) - mKvEE*dxEEL; 
+  }
+  else {
+    dxref = -mKpEE*(xEEL - xEELref);
+  }
 
   // Jacobian
   JEEL_small = mLeftEndEffector->getLinearJacobian(); 
@@ -386,13 +391,19 @@ void Controller::setLeftArmOptParams(const Eigen::Vector3d& _LeftTargetPosition)
   JEEL = (mRot0*JEEL_full*mJtf).topRightCorner(3, 18);
 
   // Jacobian Derivative
-  dJEEL_small = mLeftEndEffector->getLinearJacobianDeriv(); 
-  dJEEL_full << dJEEL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEEL_small.block<3,2>(0,6), mZeroCol, dJEEL_small.block<3,7>(0,8), mZero7Col;
-  dJEEL = (mdRot0*JEEL_full*mJtf + mRot0*dJEEL_full*mJtf + mRot0*JEEL_full*mdJtf).topRightCorner(3, 18);
-  
-  // P and b
-  mPEEL << mWEEL*JEEL;
-  mbEEL = -mWEEL*(dJEEL*mdqBody - ddxEELref);
+  if(!mInverseKinematicsOnArms) {
+    dJEEL_small = mLeftEndEffector->getLinearJacobianDeriv(); 
+    dJEEL_full << dJEEL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEEL_small.block<3,2>(0,6), mZeroCol, dJEEL_small.block<3,7>(0,8), mZero7Col;
+    dJEEL = (mdRot0*JEEL_full*mJtf + mRot0*dJEEL_full*mJtf + mRot0*JEEL_full*mdJtf).topRightCorner(3, 18);
+    
+    // P and b
+    mPEEL << mWEEL*JEEL;
+    mbEEL = -mWEEL*(dJEEL*mdqBody - ddxEELref);
+  } 
+  else {
+    mPEEL << mWEEL*JEEL;
+    mbEEL = dxref;
+  }
 }
 
 void Controller::setRightArmOptParams(const Eigen::Vector3d& _RightTargetPosition){
