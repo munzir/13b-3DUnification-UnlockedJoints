@@ -402,25 +402,32 @@ void Controller::setLeftArmOptParams(const Eigen::Vector3d& _LeftTargetPosition)
   } 
   else {
     mPEEL << mWEEL*JEEL;
-    mbEEL = dxref;
+    mbEEL = mWEEL*dxref;
   }
 }
 
 void Controller::setRightArmOptParams(const Eigen::Vector3d& _RightTargetPosition){
 
-  static Eigen::Vector3d xEERref, xEER, dxEER, ddxEERref;
+  static Eigen::Vector3d xEERref, xEER, dxEER, ddxEERref, dxref;
   static Eigen::Matrix<double, 3, 15> JEER_small, dJEER_small;
   static Eigen::Matrix<double, 3, 25> JEER_full, dJEER_full;
   static Eigen::Matrix<double, 3, 18> JEER, dJEER;
 
-  // x, dx, ddxref
+  
   xEERref = _RightTargetPosition;
   if(mSteps == 1) { 
     cout << "xEErefR: " << xEERref(0) << ", " << xEERref(1) << ", " << xEERref(2) << endl;
   }
+
+  // x, dx, ddxref
   xEER = mRot0*(mRightEndEffector->getTransform().translation() - mxyz0);
-  dxEER = mRot0*(mRightEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mRightEndEffector->getTransform().translation() - mxyz0);
-  ddxEERref = -mKpEE*(xEER - xEERref) - mKvEE*dxEER;
+  if(!mInverseKinematicsOnArms) {
+    dxEER = mRot0*(mRightEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mRightEndEffector->getTransform().translation() - mxyz0);
+    ddxEERref = -mKpEE*(xEER - xEERref) - mKvEE*dxEER;
+  }
+  else {
+    dxref = -mKpEE*(xEER - xEERref);
+  }
 
   // Jacobian
   JEER_small = mRightEndEffector->getLinearJacobian(); 
@@ -428,13 +435,19 @@ void Controller::setRightArmOptParams(const Eigen::Vector3d& _RightTargetPositio
   JEER = (mRot0*JEER_full*mJtf).topRightCorner(3, 18);  
   
   // Jacobian Derivative
-  dJEER_small = mRightEndEffector->getLinearJacobianDeriv(); 
-  dJEER_full << dJEER_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEER_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJEER_small.block<3,7>(0,8);
-  dJEER = (mdRot0*JEER_full*mJtf + mRot0*dJEER_full*mJtf + mRot0*JEER_full*mdJtf).topRightCorner(3, 18);
-  
-  // P and b
-  mPEER << mWEER*JEER;
-  mbEER = -mWEER*(dJEER*mdqBody - ddxEERref);
+  if(!mInverseKinematicsOnArms) {
+    dJEER_small = mRightEndEffector->getLinearJacobianDeriv(); 
+    dJEER_full << dJEER_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEER_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJEER_small.block<3,7>(0,8);
+    dJEER = (mdRot0*JEER_full*mJtf + mRot0*dJEER_full*mJtf + mRot0*JEER_full*mdJtf).topRightCorner(3, 18);
+    
+    // P and b
+    mPEER << mWEER*JEER;
+    mbEER = -mWEER*(dJEER*mdqBody - ddxEERref);
+  }
+  else {
+    mPEER << mWEER*JEER;
+    mbEER = mWEER*dxref; 
+  }
 }
 
 void Controller::setLeftOrientationOptParams(const Eigen::Vector3d& _LeftTargetRPY){
