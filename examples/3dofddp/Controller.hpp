@@ -187,6 +187,8 @@ public:
 
   bool mWaistLocked;
   int mOptDim; // dimension of QP optimization decision variable
+
+  bool mInverseKinematicsOnArms;
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
