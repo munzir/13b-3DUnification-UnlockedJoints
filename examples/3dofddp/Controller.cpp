@@ -516,7 +516,7 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
 
   static Eigen::Quaterniond quatRef, quat;
   static double quatRef_w, quat_w;
-  static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref;
+  static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref, wref;
   static Eigen::Matrix<double, 3, 15> JwR_small, dJwR_small;
   static Eigen::Matrix<double, 3, 25> JwR_full, dJwR_full;
   static Eigen::Matrix<double, 3, 18> JwR, dJwR;  
@@ -549,18 +549,25 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
   JwR_full << JwR_small.block<3,6>(0,0), mZeroCol, mZeroCol, JwR_small.block<3,2>(0,6), mZeroCol, mZero7Col, JwR_small.block<3,7>(0,8);
   JwR = (mRot0*JwR_full*mJtf).topRightCorner(3, 18);  
   
-  // Jacobian Derivative
-  dJwR_small = mRightEndEffector->getAngularJacobianDeriv(); 
-  dJwR_full << dJwR_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwR_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJwR_small.block<3,7>(0,8);
-  dJwR = (mdRot0*JwR_full*mJtf + mRot0*dJwR_full*mJtf + mRot0*JwR_full*mdJtf).topRightCorner(3, 18);
-  
-  // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
-  w = JwR*mdqBody;
-  dwref = -mKpOr*quatError_xyz - mKvOr*w;
-  
-  // P and b
-  mPOrR = mWOrR*JwR;
-  mbOrR = -mWOrR*(dJwR*mdqBody - dwref);
+  if(!mInverseKinematicsOnArms) {
+    // Jacobian Derivative
+    dJwR_small = mRightEndEffector->getAngularJacobianDeriv(); 
+    dJwR_full << dJwR_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwR_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJwR_small.block<3,7>(0,8);
+    dJwR = (mdRot0*JwR_full*mJtf + mRot0*dJwR_full*mJtf + mRot0*JwR_full*mdJtf).topRightCorner(3, 18);
+    
+    // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
+    w = JwR*mdqBody;
+    dwref = -mKpOr*quatError_xyz - mKvOr*w;
+    
+    // P and b
+    mPOrR = mWOrR*JwR;
+    mbOrR = -mWOrR*(dJwR*mdqBody - dwref);
+  }
+  else {
+    wref = -mKpOr*quatError_xyz;
+    mPOrR = mWOrR*JwR;
+    mbOrR = mWOrR*wref;
+  }
 }
 
 void Controller::setBalanceOptParams(double thref, double dthref, double ddthref){
