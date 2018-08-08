@@ -168,6 +168,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     }
 
     mInverseKinematicsOnArms = cfg->lookupBoolean(scope, "inverseKinematicsOnArms"); 
+
+    mCOMPDControl = cfg->lookupBoolean(scope, "COMPDControl"); 
     
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
@@ -554,36 +556,45 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
 
 void Controller::setBalanceOptParams(double thref, double dthref, double ddthref){
 
-  static Eigen::Vector3d COM, dCOM, COMref, dCOMref, ddCOMref, ddCOMStar;
+  static Eigen::Vector3d COM, dCOM, COMref, dCOMref, ddCOMref, ddCOMStar, dCOMStar;
   static Eigen::Matrix<double, 3, 25> JCOM_full, dJCOM_full;
   static Eigen::Matrix<double, 3, 18> JCOM, dJCOM;
   static Eigen::Matrix<double, 1, 18> Jth, dJth;
   static Eigen::Matrix<double, 1, 3> thVec, dthVec;
-  static double L, th, th_wrong, dth, ddthStar;
+  static double L, th, th_wrong, dth, ddthStar, dthStar;
 
   //*********************************** Balance
   // Excluding wheels from COM Calculation
   // Eigen::Vector3d bodyCOM = Rot0*(mRobot->getCOM() - xyz0);
   // Eigen::Vector3d bodyCOMLinearVelocity = Rot0*(mRobot->getCOMLinearVelocity() - dxyz0) + dRot0*(mRobot->getCOM() - xyz0);
   
-  // COM, dCOM, JCOM and dJCOM
-  COM = mRot0*(mRobot->getCOM()-mxyz0);
-  dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
-  
   // x, dx, ddxStar 
   COM = mRot0*(mRobot->getCOM()-mxyz0);
-  dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
+  if(!mInverseKinematicsOnArms) {
+    dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
+  }
   if(mCOMAngleControl) {
     th = atan2(COM(0), COM(2));
-    dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
-    ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
+    if(!mInverseKinematicsOnArms) {
+      dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
+      ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
+    }
+    else {
+      dthStar = dthref - mKpCOM*(th - thref);
+    }
   }
   else {
     if(mMaintainInitCOMDistance) L = mInitCOMDistance;
     else L = pow(COM(0)*COM(0)+COM(2)*COM(2), 0.5);
     COMref << L*sin(thref), 0, L*cos(thref);
     dCOMref << (L*cos(thref)*dthref), 0.0, (-L*sin(thref)*dthref);
-    ddCOMStar << (-L*sin(thref)*dthref*dthref + L*cos(thref)*ddthref), 0.0, (-L*cos(thref)*dthref*dthref-L*sin(thref)*ddthref);
+    if(!mInverseKinematicsOnArms) {
+      ddCOMref << (-L*sin(thref)*dthref*dthref + L*cos(thref)*ddthref), 0.0, (-L*cos(thref)*dthref*dthref-L*sin(thref)*ddthref);
+      ddCOMStar = ddCOMref - mKpCOM*(COM - COMref) - mKvCOM*(dCOM - dCOMref);
+    }
+    else {
+      dCOMStar = dCOMref - mKpCOM*(COM - COMref);
+    }
   }
   
   // Jacobian
@@ -595,21 +606,34 @@ void Controller::setBalanceOptParams(double thref, double dthref, double ddthref
   }
 
   // Jacobian derivative
-  dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
-  dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
-  if(mCOMAngleControl) {
-    dthVec << -sin(th), 0.0, -cos(th);
-    dJth = (-sin(th)*thVec*JCOM*dth + cos(th)*dthVec*JCOM*dth + cos(th)*thVec*dJCOM - dCOM(2)*Jth)/COM(2);
-  }
+  if(!mInverseKinematicsOnArms) {
+    dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
+    dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
+    if(mCOMAngleControl) {
+      dthVec << -sin(th), 0.0, -cos(th);
+      dJth = (-sin(th)*thVec*JCOM*dth + cos(th)*dthVec*JCOM*dth + cos(th)*thVec*dJCOM - dCOM(2)*Jth)/COM(2);
+    }
 
-  // P and b 
-  if(mCOMAngleControl) {
-    mPBal << mWBal(0, 0)*Jth;
-    mbBal << mWBal(0, 0)*(-dJth*mdqBody + ddthStar);
+    // P and b 
+    if(mCOMAngleControl) {
+      mPBal << mWBal(0, 0)*Jth;
+      mbBal << mWBal(0, 0)*(-dJth*mdqBody + (mCOMPDControl? ddthStar : ddthref ));
+    }
+    else {
+      mPBal << mWBal*JCOM;
+      mbBal << mWBal*(-dJCOM*mdqBody + (mCOMPDControl? ddCOMStar : ddCOMref )); 
+    }
   }
   else {
-    mPBal << mWBal*JCOM;
-    mbBal << mWBal*(-dJCOM*mdqBody + ddCOMStar); 
+    // P and b 
+    if(mCOMAngleControl) {
+      mPBal << mWBal(0, 0)*Jth;
+      mbBal << mWBal(0, 0)*(mCOMPDControl? dthStar : dthref );
+    }
+    else {
+      mPBal << mWBal*JCOM;
+      mbBal << mWBal*(mCOMPDControl? dCOMStar : dCOMref ); 
+    }
   }
 }
 

@@ -189,6 +189,7 @@ public:
   int mOptDim; // dimension of QP optimization decision variable
 
   bool mInverseKinematicsOnArms;
+  bool mCOMPDControl;
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
