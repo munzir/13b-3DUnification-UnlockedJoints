@@ -456,7 +456,7 @@ void Controller::setLeftOrientationOptParams(const Eigen::Vector3d& _LeftTargetR
 
   static Eigen::Quaterniond quatRef, quat;
   static double quatRef_w, quat_w;
-  static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref;
+  static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref, wref;
   static Eigen::Matrix<double, 3, 15> JwL_small, dJwL_small;
   static Eigen::Matrix<double, 3, 25> JwL_full, dJwL_full;
   static Eigen::Matrix<double, 3, 18> JwL, dJwL;  
@@ -489,18 +489,27 @@ void Controller::setLeftOrientationOptParams(const Eigen::Vector3d& _LeftTargetR
   JwL_full << JwL_small.block<3,6>(0,0), mZeroCol, mZeroCol, JwL_small.block<3,2>(0,6), mZeroCol, JwL_small.block<3,7>(0,8), mZero7Col;
   JwL = (mRot0*JwL_full*mJtf).topRightCorner(3, 18);
 
-  // Jacobian Derivative
-  dJwL_small = mLeftEndEffector->getAngularJacobianDeriv(); 
-  dJwL_full << dJwL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwL_small.block<3,2>(0,6), mZeroCol, dJwL_small.block<3,7>(0,8), mZero7Col;
-  dJwL = (mdRot0*JwL_full*mJtf + mRot0*dJwL_full*mJtf + mRot0*JwL_full*mdJtf).topRightCorner(3, 18);
+  if(!mInverseKinematicsOnArms) {
+    
+    // Jacobian Derivative
+    dJwL_small = mLeftEndEffector->getAngularJacobianDeriv(); 
+    dJwL_full << dJwL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwL_small.block<3,2>(0,6), mZeroCol, dJwL_small.block<3,7>(0,8), mZero7Col;
+    dJwL = (mdRot0*JwL_full*mJtf + mRot0*dJwL_full*mJtf + mRot0*JwL_full*mdJtf).topRightCorner(3, 18);
+    
+    // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
+    w = JwL*mdqBody;
+    dwref = -mKpOr*quatError_xyz - mKvOr*w;  
+
+    // P and b
+    mPOrL = mWOrL*JwL;
+    mbOrL = -mWOrL*(dJwL*mdqBody - dwref);
+  } 
+  else {
+    wref = -mKpOr*quatError_xyz;
+    mPOrL = mWOrL*JwL;
+    mbOrL = mWOrL*wref;
+  }
   
-  // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
-  w = JwL*mdqBody;
-  dwref = -mKpOr*quatError_xyz - mKvOr*w;
-  
-  // P and b
-  mPOrL = mWOrL*JwL;
-  mbOrL = -mWOrL*(dJwL*mdqBody - dwref);
 }
 
 void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTargetRPY){
