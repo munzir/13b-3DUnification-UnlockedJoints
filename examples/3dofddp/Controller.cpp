@@ -200,10 +200,14 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   if(mCOMAngleControl) {
     mPBal = Eigen::MatrixXd::Zero(1, 18);
     mbBal = Eigen::VectorXd::Zero(1);
+    mPBal_ik = Eigen::MatrixXd::Zero(1, 18);
+    mbBal_ik = Eigen::VectorXd::Zero(1);
   }
   else {
     mPBal = Eigen::MatrixXd::Zero(3, 18);
     mbBal = Eigen::VectorXd::Zero(3);
+    mPBal_ik = Eigen::MatrixXd::Zero(3, 18);
+    mbBal_ik = Eigen::VectorXd::Zero(3);
   }
 
 
@@ -380,11 +384,9 @@ void Controller::setLeftArmOptParams(const Eigen::Vector3d& _LeftTargetPosition)
 
   // x, dx, ddxref
   xEEL = mRot0*(mLeftEndEffector->getTransform().translation() - mxyz0);
-  if(!mInverseKinematicsOnArms) { 
-    dxEEL = mRot0*(mLeftEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mLeftEndEffector->getTransform().translation() - mxyz0);
-    ddxEELref = -mKpEE*(xEEL - xEELref) - mKvEE*dxEEL; 
-  }
-  else {
+  dxEEL = mRot0*(mLeftEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mLeftEndEffector->getTransform().translation() - mxyz0);
+  ddxEELref = -mKpEE*(xEEL - xEELref) - mKvEE*dxEEL; 
+  if(mInverseKinematicsOnArms) {
     dxref = -mKpEE*(xEEL - xEELref);
   }
 
@@ -394,18 +396,17 @@ void Controller::setLeftArmOptParams(const Eigen::Vector3d& _LeftTargetPosition)
   JEEL = (mRot0*JEEL_full*mJtf).topRightCorner(3, 18);
 
   // Jacobian Derivative
-  if(!mInverseKinematicsOnArms) {
-    dJEEL_small = mLeftEndEffector->getLinearJacobianDeriv(); 
-    dJEEL_full << dJEEL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEEL_small.block<3,2>(0,6), mZeroCol, dJEEL_small.block<3,7>(0,8), mZero7Col;
-    dJEEL = (mdRot0*JEEL_full*mJtf + mRot0*dJEEL_full*mJtf + mRot0*JEEL_full*mdJtf).topRightCorner(3, 18);
-    
-    // P and b
-    mPEEL << mWEEL*JEEL;
-    mbEEL = -mWEEL*(dJEEL*mdqBody - ddxEELref);
-  } 
-  else {
-    mPEEL << mWEEL*JEEL;
-    mbEEL = mWEEL*dxref;
+  dJEEL_small = mLeftEndEffector->getLinearJacobianDeriv(); 
+  dJEEL_full << dJEEL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEEL_small.block<3,2>(0,6), mZeroCol, dJEEL_small.block<3,7>(0,8), mZero7Col;
+  dJEEL = (mdRot0*JEEL_full*mJtf + mRot0*dJEEL_full*mJtf + mRot0*JEEL_full*mdJtf).topRightCorner(3, 18);
+  
+  // P and b
+  mPEEL << mWEEL*JEEL;
+  mbEEL = -mWEEL*(dJEEL*mdqBody - ddxEELref);
+  
+  if(mInverseKinematicsOnArms) {
+    mPEEL_ik << mWEEL*JEEL;
+    mbEEL_ik = mWEEL*dxref;
   }
 }
 
@@ -424,11 +425,9 @@ void Controller::setRightArmOptParams(const Eigen::Vector3d& _RightTargetPositio
 
   // x, dx, ddxref
   xEER = mRot0*(mRightEndEffector->getTransform().translation() - mxyz0);
-  if(!mInverseKinematicsOnArms) {
-    dxEER = mRot0*(mRightEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mRightEndEffector->getTransform().translation() - mxyz0);
-    ddxEERref = -mKpEE*(xEER - xEERref) - mKvEE*dxEER;
-  }
-  else {
+  dxEER = mRot0*(mRightEndEffector->getLinearVelocity() - mdxyz0) + mdRot0*(mRightEndEffector->getTransform().translation() - mxyz0);
+  ddxEERref = -mKpEE*(xEER - xEERref) - mKvEE*dxEER;
+  if(mInverseKinematicsOnArms) {
     dxref = -mKpEE*(xEER - xEERref);
   }
 
@@ -438,18 +437,17 @@ void Controller::setRightArmOptParams(const Eigen::Vector3d& _RightTargetPositio
   JEER = (mRot0*JEER_full*mJtf).topRightCorner(3, 18);  
   
   // Jacobian Derivative
-  if(!mInverseKinematicsOnArms) {
-    dJEER_small = mRightEndEffector->getLinearJacobianDeriv(); 
-    dJEER_full << dJEER_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEER_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJEER_small.block<3,7>(0,8);
-    dJEER = (mdRot0*JEER_full*mJtf + mRot0*dJEER_full*mJtf + mRot0*JEER_full*mdJtf).topRightCorner(3, 18);
-    
-    // P and b
-    mPEER << mWEER*JEER;
-    mbEER = -mWEER*(dJEER*mdqBody - ddxEERref);
-  }
-  else {
-    mPEER << mWEER*JEER;
-    mbEER = mWEER*dxref; 
+  dJEER_small = mRightEndEffector->getLinearJacobianDeriv(); 
+  dJEER_full << dJEER_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJEER_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJEER_small.block<3,7>(0,8);
+  dJEER = (mdRot0*JEER_full*mJtf + mRot0*dJEER_full*mJtf + mRot0*JEER_full*mdJtf).topRightCorner(3, 18);
+  
+  // P and b
+  mPEER << mWEER*JEER;
+  mbEER = -mWEER*(dJEER*mdqBody - ddxEERref);
+  
+  if(mInverseKinematicsOnArms) {
+    mPEER_ik << mWEER*JEER;
+    mbEER_ik = mWEER*dxref; 
   }
 }
 
@@ -490,25 +488,23 @@ void Controller::setLeftOrientationOptParams(const Eigen::Vector3d& _LeftTargetR
   JwL_full << JwL_small.block<3,6>(0,0), mZeroCol, mZeroCol, JwL_small.block<3,2>(0,6), mZeroCol, JwL_small.block<3,7>(0,8), mZero7Col;
   JwL = (mRot0*JwL_full*mJtf).topRightCorner(3, 18);
 
-  if(!mInverseKinematicsOnArms) {
-    
-    // Jacobian Derivative
-    dJwL_small = mLeftEndEffector->getAngularJacobianDeriv(); 
-    dJwL_full << dJwL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwL_small.block<3,2>(0,6), mZeroCol, dJwL_small.block<3,7>(0,8), mZero7Col;
-    dJwL = (mdRot0*JwL_full*mJtf + mRot0*dJwL_full*mJtf + mRot0*JwL_full*mdJtf).topRightCorner(3, 18);
-    
-    // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
-    w = JwL*mdqBody;
-    dwref = -mKpOr*quatError_xyz - mKvOr*w;  
+  // Jacobian Derivative
+  dJwL_small = mLeftEndEffector->getAngularJacobianDeriv(); 
+  dJwL_full << dJwL_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwL_small.block<3,2>(0,6), mZeroCol, dJwL_small.block<3,7>(0,8), mZero7Col;
+  dJwL = (mdRot0*JwL_full*mJtf + mRot0*dJwL_full*mJtf + mRot0*JwL_full*mdJtf).topRightCorner(3, 18);
+  
+  // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
+  w = JwL*mdqBody;
+  dwref = -mKpOr*quatError_xyz - mKvOr*w;  
 
-    // P and b
-    mPOrL = mWOrL*JwL;
-    mbOrL = -mWOrL*(dJwL*mdqBody - dwref);
-  } 
-  else {
+  // P and b
+  mPOrL = mWOrL*JwL;
+  mbOrL = -mWOrL*(dJwL*mdqBody - dwref);
+  
+  if(mInverseKinematicsOnArms) {
     wref = -mKpOr*quatError_xyz;
-    mPOrL = mWOrL*JwL;
-    mbOrL = mWOrL*wref;
+    mPOrL_ik = mWOrL*JwL;
+    mbOrL_ik = mWOrL*wref;
   }
   
 }
@@ -550,24 +546,23 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
   JwR_full << JwR_small.block<3,6>(0,0), mZeroCol, mZeroCol, JwR_small.block<3,2>(0,6), mZeroCol, mZero7Col, JwR_small.block<3,7>(0,8);
   JwR = (mRot0*JwR_full*mJtf).topRightCorner(3, 18);  
   
-  if(!mInverseKinematicsOnArms) {
-    // Jacobian Derivative
-    dJwR_small = mRightEndEffector->getAngularJacobianDeriv(); 
-    dJwR_full << dJwR_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwR_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJwR_small.block<3,7>(0,8);
-    dJwR = (mdRot0*JwR_full*mJtf + mRot0*dJwR_full*mJtf + mRot0*JwR_full*mdJtf).topRightCorner(3, 18);
-    
-    // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
-    w = JwR*mdqBody;
-    dwref = -mKpOr*quatError_xyz - mKvOr*w;
-    
-    // P and b
-    mPOrR = mWOrR*JwR;
-    mbOrR = -mWOrR*(dJwR*mdqBody - dwref);
-  }
-  else {
+  // Jacobian Derivative
+  dJwR_small = mRightEndEffector->getAngularJacobianDeriv(); 
+  dJwR_full << dJwR_small.block<3,6>(0,0), mZeroCol, mZeroCol, dJwR_small.block<3,2>(0,6), mZeroCol, mZero7Col, dJwR_small.block<3,7>(0,8);
+  dJwR = (mdRot0*JwR_full*mJtf + mRot0*dJwR_full*mJtf + mRot0*JwR_full*mdJtf).topRightCorner(3, 18);
+  
+  // Current angular speed in frame 0 and Reference angular acceleration of the end-effector in frame 0
+  w = JwR*mdqBody;
+  dwref = -mKpOr*quatError_xyz - mKvOr*w;
+  
+  // P and b
+  mPOrR = mWOrR*JwR;
+  mbOrR = -mWOrR*(dJwR*mdqBody - dwref);
+  
+  if(mInverseKinematicsOnArms) {
     wref = -mKpOr*quatError_xyz;
-    mPOrR = mWOrR*JwR;
-    mbOrR = mWOrR*wref;
+    mPOrR_ik = mWOrR*JwR;
+    mbOrR_ik = mWOrR*wref;
   }
 }
 
@@ -587,16 +582,12 @@ void Controller::setBalanceOptParams(double thref, double dthref, double ddthref
   
   // x, dx, ddxStar 
   COM = mRot0*(mRobot->getCOM()-mxyz0);
-  if(!mInverseKinematicsOnArms) {
-    dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
-  }
+  dCOM = mRot0*(mRobot->getCOMLinearVelocity()-mdxyz0) + mdRot0*(mRobot->getCOM() - mxyz0);
   if(mCOMAngleControl) {
     th = atan2(COM(0), COM(2));
-    if(!mInverseKinematicsOnArms) {
-      dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
-      ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
-    }
-    else {
+    dth = (cos(th)/COM(2))*(cos(th)*dCOM(0) - sin(th)*dCOM(2));
+    ddthStar = ddthref - mKpCOM*(th - thref) - mKvCOM*(dth - dthref);
+    if(mInverseKinematicsOnArms) {
       dthStar = dthref - mKpCOM*(th - thref);
     }
   }
@@ -605,11 +596,9 @@ void Controller::setBalanceOptParams(double thref, double dthref, double ddthref
     else L = pow(COM(0)*COM(0)+COM(2)*COM(2), 0.5);
     COMref << L*sin(thref), 0, L*cos(thref);
     dCOMref << (L*cos(thref)*dthref), 0.0, (-L*sin(thref)*dthref);
-    if(!mInverseKinematicsOnArms) {
-      ddCOMref << (-L*sin(thref)*dthref*dthref + L*cos(thref)*ddthref), 0.0, (-L*cos(thref)*dthref*dthref-L*sin(thref)*ddthref);
-      ddCOMStar = ddCOMref - mKpCOM*(COM - COMref) - mKvCOM*(dCOM - dCOMref);
-    }
-    else {
+    ddCOMref << (-L*sin(thref)*dthref*dthref + L*cos(thref)*ddthref), 0.0, (-L*cos(thref)*dthref*dthref-L*sin(thref)*ddthref);
+    ddCOMStar = ddCOMref - mKpCOM*(COM - COMref) - mKvCOM*(dCOM - dCOMref);
+    if(mInverseKinematicsOnArms) {
       dCOMStar = dCOMref - mKpCOM*(COM - COMref);
     }
   }
@@ -623,33 +612,32 @@ void Controller::setBalanceOptParams(double thref, double dthref, double ddthref
   }
 
   // Jacobian derivative
-  if(!mInverseKinematicsOnArms) {
-    dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
-    dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
-    if(mCOMAngleControl) {
-      dthVec << -sin(th), 0.0, -cos(th);
-      dJth = (-sin(th)*thVec*JCOM*dth + cos(th)*dthVec*JCOM*dth + cos(th)*thVec*dJCOM - dCOM(2)*Jth)/COM(2);
-    }
+  dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
+  dJCOM = (mdRot0*JCOM_full*mJtf + mRot0*dJCOM_full*mJtf + mRot0*JCOM_full*mdJtf).topRightCorner(3,18); 
+  if(mCOMAngleControl) {
+    dthVec << -sin(th), 0.0, -cos(th);
+    dJth = (-sin(th)*thVec*JCOM*dth + cos(th)*dthVec*JCOM*dth + cos(th)*thVec*dJCOM - dCOM(2)*Jth)/COM(2);
+  }
 
-    // P and b 
-    if(mCOMAngleControl) {
-      mPBal << mWBal(0, 0)*Jth;
-      mbBal << mWBal(0, 0)*(-dJth*mdqBody + (mCOMPDControl? ddthStar : ddthref ));
-    }
-    else {
-      mPBal << mWBal*JCOM;
-      mbBal << mWBal*(-dJCOM*mdqBody + (mCOMPDControl? ddCOMStar : ddCOMref )); 
-    }
+  // P and b 
+  if(mCOMAngleControl) {
+    mPBal << mWBal(0, 0)*Jth;
+    mbBal << mWBal(0, 0)*(-dJth*mdqBody + (mCOMPDControl? ddthStar : ddthref ));
   }
   else {
+    mPBal << mWBal*JCOM;
+    mbBal << mWBal*(-dJCOM*mdqBody + (mCOMPDControl? ddCOMStar : ddCOMref )); 
+  }
+  
+  if(mInverseKinematicsOnArms) {
     // P and b 
     if(mCOMAngleControl) {
-      mPBal << mWBal(0, 0)*Jth;
-      mbBal << mWBal(0, 0)*(mCOMPDControl? dthStar : dthref );
+      mPBal_ik << mWBal(0, 0)*Jth;
+      mbBal_ik << mWBal(0, 0)*(mCOMPDControl? dthStar : dthref );
     }
     else {
-      mPBal << mWBal*JCOM;
-      mbBal << mWBal*(mCOMPDControl? dCOMStar : dCOMref ); 
+      mPBal_ik << mWBal*JCOM;
+      mbBal_ik << mWBal*(mCOMPDControl? dCOMStar : dCOMref ); 
     }
   }
 }
@@ -743,35 +731,81 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   
   
   // set Regulation Opt Params
-  if(!mInverseKinematicsOnArms) {
-    mPPose = mWMatPose;
-    mbPose << mWMatPose*(-mKpPose*(mqBody - mqBodyInit) - mKvPose*mdqBody);
+  mPPose = mWMatPose;
+  mbPose << mWMatPose*(-mKpPose*(mqBody - mqBodyInit) - mKvPose*mdqBody);
+  
+  mPSpeedReg = mWMatSpeedReg;
+  mbSpeedReg << -mWMatSpeedReg*mKvSpeedReg*mdqBody;
+  
+  mPReg = mWMatReg;
+  mbReg.setZero();
+   
+  if(mInverseKinematicsOnArms) {
+    mPPose_ik = mWMatPose;
+    mbPose_ik << mWMatPose*(-mKpPose*(mqBody - mqBodyInit));
     
-    mPSpeedReg = mWMatSpeedReg;
-    mbSpeedReg << -mWMatSpeedReg*mKvSpeedReg*mdqBody;
+    mPSpeedReg_ik = mWMatSpeedReg;
+    mbSpeedReg_ik.setZero();
     
-    mPReg = mWMatReg;
-    mbReg.setZero();
-  } 
-  else {
-    mPPose = mWMatPose;
-    mbPose << mWMatPose*(-mKpPose*(mqBody - mqBodyInit));
-    
-    mPSpeedReg = mWMatSpeedReg;
-    mbSpeedReg.setZero();
-    
-    mPReg = mWMatReg;
-    mbReg = mWMatReg*mdqBody;
+    mPReg_ik = mWMatReg;
+    mbReg_ik = mWMatReg*mdqBody;
   }
 
   // set mMM and mhh
   // Needs mRobot, mJtf, mdJtf, mdqMin, mR
   computeDynamics();
   
-  // ***************************** QP
-  OptParams optParams, optParamsID;
-  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mOptDim);
-  P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim-1),
+  // ************************************ Inverse Kinematics
+  if(mInverseKinematicsOnArms) {
+    OptParams optParamsIK;
+    Eigen::MatrixXd P_ik(mPEER_ik.rows() + mPOrR_ik.rows() + mPEEL_ik.rows() + mPOrL_ik.rows() + mPBal_ik.rows() + mPPose_ik.rows() + mPSpeedReg_ik.rows() + mPReg_ik.rows(), mOptDim);
+    P_ik << mPEER_ik.col(0), mPEER_ik.topRightCorner(mPEER_ik.rows(), mOptDim-1),
+         mPOrR_ik.col(0), mPOrR_ik.topRightCorner(mPOrR_ik.rows(), mOptDim-1),
+         mPEEL_ik.col(0), mPEEL_ik.topRightCorner(mPEEL_ik.rows(), mOptDim-1),
+         mPOrL_ik.col(0), mPOrL_ik.topRightCorner(mPOrL_ik.rows(), mOptDim-1),
+         mPBal_ik.col(0), mPBal_ik.topRightCorner(mPBal_ik.rows(), mOptDim-1),
+         mPPose_ik.col(0), mPPose_ik.topRightCorner(mPPose_ik.rows(), mOptDim-1),
+         mPSpeedReg_ik.col(0), mPSpeedReg_ik.topRightCorner(mPSpeedReg_ik.rows(), mOptDim-1),
+         mPReg_ik.col(0), mPReg_ik.topRightCorner(mPReg_ik.rows(), mOptDim-1);
+    
+    Eigen::VectorXd b_ik(mbEER_ik.rows() + mbOrR_ik.rows() + mbEEL_ik.rows() + mbOrL_ik.rows() + mbBal_ik.rows() + mbPose_ik.rows() + mbSpeedReg_ik.rows() + mbReg_ik.rows(), mbEER_ik.cols() );
+    b_ik << mbEER_ik,
+         mbOrR_ik,
+         mbEEL_ik,
+         mbOrL_ik,
+         mbBal_ik,
+         mbPose_ik,
+         mbSpeedReg_ik,
+         mbReg_ik;
+    optParamsIK.P = P_ik;
+    optParamsIK.b = b_ik;
+
+    // Optimization for inverse Kinematics
+    nlopt::opt opt_ik(nlopt::LD_SLSQP, mOptDim);
+    double minf_ik;
+    opt_ik.set_min_objective(optFunc, &optParamsIK);
+    opt_ik.set_xtol_rel(1e-3);
+    if(maxTimeSet) opt_ik.set_maxtime(0.01);
+    vector<double> dqBodyRef_vec(mOptDim);
+    Eigen::VectorXd::Map(&dqBodyRef_vec[0], mdqBodyRef.size()) = mdqBodyRef;
+    try{
+      nlopt::result result = opt_ik.optimize(dqBodyRef_vec, minf_ik);
+    }
+    catch(std::exception &e) {
+        // std::cout << "nlopt failed: " << e.what() << std::endl;
+    }
+    for(int i=0; i<mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];  
+
+    // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
+    // optParamsID.b = mKvSpeedReg*(mdqBody - mdqBodyRef);
+  }
+  
+
+
+  // ***************************** Inverse Dynamics
+  OptParams optParamsID;
+  Eigen::MatrixXd P_id(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mOptDim);
+  P_id << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim-1),
        mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim-1),
        mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim-1),
        mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim-1),
@@ -780,8 +814,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
        mPSpeedReg.col(0), mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim-1),
        mPReg.col(0), mPReg.topRightCorner(mPReg.rows(), mOptDim-1);
   
-  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() + mbReg.rows(), mbEER.cols() );
-  b << mbEER,
+  Eigen::VectorXd b_id(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() + mbReg.rows(), mbEER.cols() );
+  b_id << mbEER,
        mbOrR,
        mbEEL,
        mbOrL,
@@ -789,33 +823,10 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
        mbPose,
        mbSpeedReg,
        mbReg;
-  optParams.P = P;
-  optParams.b = b;
+  optParamsID.P = P_id;
+  optParamsID.b = b_id;
 
-  // Optimization for inverse Kinematics
-  if(mInverseKinematicsOnArms) {
-    nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
-    double minf;
-    opt.set_min_objective(optFunc, &optParams);
-    opt.set_xtol_rel(1e-3);
-    if(maxTimeSet) opt.set_maxtime(0.01);
-    vector<double> dqBodyRef_vec(mOptDim);
-    Eigen::VectorXd::Map(&dqBodyRef_vec[0], mdqBodyRef.size()) = mdqBodyRef;
-    try{
-      nlopt::result result = opt.optimize(dqBodyRef_vec, minf);
-    }
-    catch(std::exception &e) {
-        // std::cout << "nlopt failed: " << e.what() << std::endl;
-    }
-    for(int i=0; i<mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];  
-
-    optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
-    optParamsID.b = mKvSpeedReg*(mdqBody - mdqBodyRef);
-  }
-  else {
-    optParamsID = optParams;
-  }
-
+  
   // Spin Based Constraints
   // const vector<double> inequalityconstraintTol(19, 1e-3);
   // OptParams inequalityconstraintParams[2];
