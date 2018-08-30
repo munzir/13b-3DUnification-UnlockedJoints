@@ -166,12 +166,20 @@ public:
 
   Eigen::Matrix<double, 25, 20> mJtf, mdJtf;
 
+  // Inverse Dynamics
   Eigen::Matrix<double, 3, 18> mPEEL, mPOrL, mPEER, mPOrR;
   Eigen::Matrix<double, 3, 1> mbEEL, mbOrL, mbEER, mbOrR;
   Eigen::MatrixXd mPBal;
   Eigen::VectorXd mbBal;
   Eigen::Matrix<double, 18, 18> mPPose, mPSpeedReg, mPReg;
   Eigen::Matrix<double, 18, 1> mbPose, mbSpeedReg, mbReg;
+  // Inverse Kinematics
+  Eigen::Matrix<double, 3, 18> mPEEL_ik, mPOrL_ik, mPEER_ik, mPOrR_ik;
+  Eigen::Matrix<double, 3, 1> mbEEL_ik, mbOrL_ik, mbEER_ik, mbOrR_ik;
+  Eigen::MatrixXd mPBal_ik;
+  Eigen::VectorXd mbBal_ik;
+  Eigen::Matrix<double, 18, 18> mPPose_ik, mPSpeedReg_ik, mPReg_ik;
+  Eigen::Matrix<double, 18, 1> mbPose_ik, mbSpeedReg_ik, mbReg_ik;
   bool mCOMAngleControl, mMaintainInitCOMDistance;
   
 
