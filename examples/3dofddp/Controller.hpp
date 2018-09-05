@@ -124,6 +124,13 @@ public:
 
   /// \brief Control forces
   Eigen::Matrix<double, 19, 1> mForces;
+  
+  double mKm_array[7] = {31.4e-3, 31.4e-3, 38e-3, 38e-3, 16e-3, 16e-3, 16e-3};
+  double mGR_array[7] = {596, 596, 625, 625, 552, 552, 552};
+  Eigen::Matrix<double, 7, 1> currLow;
+  Eigen::Matrix<double, 7, 1> currHigh; 
+  Eigen::Matrix<double, 7, 1> torqueLow;
+  Eigen::Matrix<double, 7, 1> torqueHigh; 
 
   size_t mSteps;
 

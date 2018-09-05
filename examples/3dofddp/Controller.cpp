@@ -1,3 +1,10 @@
+//To-Do 
+//  - Read from Beta?
+//  - Set Frictions
+//  - Set forces for 3x1 block in PID section? (What is this)
+//	- Compare gain values and add/delete accordingly
+//  - Check PID equations
+
 /*
  * Copyright (c) 2014-2016, Humanoid Lab, Georgia Tech Research Corporation
  * Copyright (c) 2014-2017, Graphics Lab, Georgia Tech Research Corporation
@@ -45,6 +52,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   assert(_robot != nullptr);
   assert(_LeftendEffector != nullptr);
   assert(_RightendEffector != nullptr);
+  
+  currLow << -9.5, -9.5, -7.5, -7.5, -5.5, -5.5, -5.5;
+  currHigh << 9.5, 9.5, 7.5, 7.5, 5.5, 5.5, 5.5;
 
   int dof = mRobot->getNumDofs();
   // std::cout << "[controller] DoF: " << dof << std::endl;
@@ -210,8 +220,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     mbBal = Eigen::VectorXd::Zero(3);
   }
 
-
-
   // *********************************** Transform Jacobians
   mJtf.topRightCorner(8, 17) = Eigen::Matrix<double, 8, 17>::Zero(); 
   mJtf.bottomLeftCorner(17, 3) = Eigen::Matrix<double, 17, 3>::Zero(); 
@@ -221,6 +229,13 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // ******************************** zero Cols
   mZeroCol.setZero();
   mZero7Col.setZero();
+  
+  // Set Beta parameters after reading them. Set torqueLow/High values
+  for(int i=1; i<numBodies; i++) {
+  
+    torqueLow(i-1) = mKm_array[i-1]*mGR_array[i-1]*currLow(i-1);
+    torqueHigh(i-1) = mKm_array[i-1]*mGR_array[i-1]*currHigh(i-1);
+  }
 
   // **************************** if waist locked, dimesion of decision variable in QP should be reduced by one
   if(mWaistLocked) mOptDim = 17;
@@ -756,6 +771,10 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     
     mPReg = mWMatReg;
     mbReg.setZero();
+	
+	// set mMM and mhh
+	// Needs mRobot, mJtf, mdJtf, mdqMin, mR
+	computeDynamics();
   } 
   else {
     mPPose = mWMatPose;
@@ -767,10 +786,6 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     mPReg = mWMatReg;
     mbReg = mWMatReg*mdqBody;
   }
-
-  // set mMM and mhh
-  // Needs mRobot, mJtf, mdJtf, mdqMin, mR
-  computeDynamics();
   
   // ***************************** QP
   OptParams optParams, optParamsID;
@@ -860,8 +875,11 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
   double minf;
   opt.set_min_objective(optFunc, &optParamsID);
-  opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[0], inequalityconstraintTol);
-  opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[1], inequalityconstraintTol);
+  // Only add inequalities for Inverse Dynamics
+  if(!mInverseKinematicsOnArms){
+	  opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[0], inequalityconstraintTol);
+	  opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[1], inequalityconstraintTol);
+  }
   opt.set_xtol_rel(1e-3);
   if(maxTimeSet) opt.set_maxtime(0.01);
   vector<double> ddqBodyRef_vec(mOptDim);
@@ -881,7 +899,15 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   mForces.tail(mOptDim-1) = bodyTorques.tail(mOptDim-1);
   if(mInverseKinematicsOnArms){
     const vector<size_t > dqIndex{11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
-    mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
+    //WRONG USE PID mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
+	
+	// Get current dqs from robot arms
+	
+	// Calculate opt_torque_cmd
+	
+	// Set lmtd_torque_cmd
+	
+	// Set Forces
 
     if(mCOMControlInLowLevel) {
       const vector<size_t > forceIndex{6, 7, 8, 9, 10};
