@@ -8,5 +8,10 @@
   "directory": "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build/examples/3dofddp",
   "command": "/usr/bin/c++  -DDDP_USE_OPENMP -isystem /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/eigen -I/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/include -I/usr/local/include -isystem /usr/local/include/eigen3   -std=c++11 -fopenmp -O3 -DNDEBUG   -std=c++11 -o CMakeFiles/3dofddp.dir/Controller.cpp.o -c /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.cpp",
   "file": "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.cpp"
+},
+{
+  "directory": "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build/examples/3dofddp",
+  "command": "/usr/bin/c++  -DDDP_USE_OPENMP -isystem /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/eigen -I/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/include -I/usr/local/include -isystem /usr/local/include/eigen3   -std=c++11 -fopenmp -O3 -DNDEBUG   -std=c++11 -o CMakeFiles/3dofddp.dir/file_ops.cpp.o -c /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/file_ops.cpp",
+  "file": "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/file_ops.cpp"
 }
 ]

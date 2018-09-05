@@ -215,39 +215,6 @@ DDP_SOURCE_DIR:STATIC=/home/munzir/Documents/Software/13b-3DUnification-Unlocked
 //Use system-installed version of Eigen
 DDP_SYSTEM_EIGEN:BOOL=OFF
 
-//Path to a library.
-MKL_CORE_LIBRARY:FILEPATH=MKL_CORE_LIBRARY-NOTFOUND
-
-//Path to a file.
-MKL_FFTW_INCLUDE_DIR:PATH=MKL_FFTW_INCLUDE_DIR-NOTFOUND
-
-//Path to a library.
-MKL_GNUTHREAD_LIBRARY:FILEPATH=MKL_GNUTHREAD_LIBRARY-NOTFOUND
-
-//Path to a library.
-MKL_ILP_LIBRARY:FILEPATH=MKL_ILP_LIBRARY-NOTFOUND
-
-//Path to a file.
-MKL_INCLUDE_DIR:PATH=MKL_INCLUDE_DIR-NOTFOUND
-
-//Path to a library.
-MKL_INTELTHREAD_LIBRARY:FILEPATH=MKL_INTELTHREAD_LIBRARY-NOTFOUND
-
-//Path to a library.
-MKL_IOMP5_LIBRARY:FILEPATH=MKL_IOMP5_LIBRARY-NOTFOUND
-
-//Path to a library.
-MKL_LAPACK_LIBRARY:FILEPATH=MKL_LAPACK_LIBRARY-NOTFOUND
-
-//Path to a library.
-MKL_LP_LIBRARY:FILEPATH=MKL_LP_LIBRARY-NOTFOUND
-
-//Path to a file.
-MKL_ROOT_DIR:PATH=MKL_ROOT_DIR-NOTFOUND
-
-//Path to a library.
-MKL_SEQUENTIAL_LIBRARY:FILEPATH=MKL_SEQUENTIAL_LIBRARY-NOTFOUND
-
 //CXX compiler flags for OpenMP parallelization
 OpenMP_CXX_FLAGS:STRING=-fopenmp
 
@@ -410,7 +377,7 @@ CMAKE_UNAME:INTERNAL=/bin/uname
 CMAKE_VERBOSE_MAKEFILE-ADVANCED:INTERNAL=1
 DART_DEFINITIONS:INTERNAL=
 DART_INCLUDE_DIRS:INTERNAL=/usr/local/include
-DART_LIBRARIES:INTERNAL=dart-utils-urdf;dart-gui;dart;dart-utils-urdf;dart-gui;dart
+DART_LIBRARIES:INTERNAL=dart-utils-urdf;dart-gui;dart;dart-utils-urdf;dart-gui;dart;dart-utils-urdf;dart-gui;dart
 DART_dart_DEFINITIONS:INTERNAL=
 DART_dart_DEPENDENCIES:INTERNAL=external-odelcpsolver
 DART_dart_FOUND:INTERNAL=TRUE
@@ -427,27 +394,13 @@ DART_utils-urdf_FOUND:INTERNAL=TRUE
 DART_utils-urdf_INCLUDE_DIRS:INTERNAL=
 DART_utils-urdf_LIBRARIES:INTERNAL=dart-utils-urdf
 //Details about finding DART
-FIND_PACKAGE_MESSAGE_DETAILS_DART:INTERNAL=[/usr/local/include][dart-utils-urdf;dart-gui;dart;dart-utils-urdf;dart-gui;dart][cfound components:  utils-urdf gui dart ][v(6.3.0)]
+FIND_PACKAGE_MESSAGE_DETAILS_DART:INTERNAL=[/usr/local/include][dart-utils-urdf;dart-gui;dart;dart-utils-urdf;dart-gui;dart;dart-utils-urdf;dart-gui;dart][cfound components:  utils-urdf gui dart ][v(6.3.0)]
 //Details about finding OpenMP
 FIND_PACKAGE_MESSAGE_DETAILS_OpenMP:INTERNAL=[TRUE][TRUE][c ][v()]
 //Details about finding OpenMP_C
 FIND_PACKAGE_MESSAGE_DETAILS_OpenMP_C:INTERNAL=[-fopenmp][/usr/lib/gcc/x86_64-linux-gnu/4.9/libgomp.so][/usr/lib/x86_64-linux-gnu/libpthread.so][v()]
 //Details about finding OpenMP_CXX
 FIND_PACKAGE_MESSAGE_DETAILS_OpenMP_CXX:INTERNAL=[-fopenmp][/usr/lib/gcc/x86_64-linux-gnu/4.9/libgomp.so][/usr/lib/x86_64-linux-gnu/libpthread.so][v()]
-//ADVANCED property for variable: MKL_CORE_LIBRARY
-MKL_CORE_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: MKL_GNUTHREAD_LIBRARY
-MKL_GNUTHREAD_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: MKL_ILP_LIBRARY
-MKL_ILP_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: MKL_INCLUDE_DIR
-MKL_INCLUDE_DIR-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: MKL_INTELTHREAD_LIBRARY
-MKL_INTELTHREAD_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: MKL_LP_LIBRARY
-MKL_LP_LIBRARY-ADVANCED:INTERNAL=1
-//ADVANCED property for variable: MKL_SEQUENTIAL_LIBRARY
-MKL_SEQUENTIAL_LIBRARY-ADVANCED:INTERNAL=1
 //Result of TRY_COMPILE
 OpenMP_COMPILE_RESULT_CXX_fopenmp:INTERNAL=TRUE
 //Result of TRY_COMPILE

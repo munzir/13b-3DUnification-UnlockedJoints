@@ -40,6 +40,9 @@
 #include <string>
 #include <config4cpp/Configuration.h>
 #include <iostream>
+#include <fstream>
+
+#include "file_ops.hpp"
 
 // using namespace dart;
 // using namespace std;  
