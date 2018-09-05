@@ -31,7 +31,7 @@ if(OPENMP_FOUND)
     add_definitions(-DDDP_USE_OPENMP)
 endif()
 
-find_package(MKL)
+#find_package(MKL)
 if(MKL_FOUND)
     message(STATUS "Intel MKL Found")
     message(STATUS "MKL root directory: ${MKL_ROOT_DIR}")

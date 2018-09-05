@@ -136,8 +136,8 @@ public:
   Eigen::Matrix<double, 7, 1> torqueLow;
   Eigen::Matrix<double, 7, 1> torqueHigh; 
   
-  Eigen::Matrix<double, 7, 1> dqL = mdqBody.segment(4,7);
-  Eigen::Matrix<double, 7, 1> dqR
+  Eigen::Matrix<double, 7, 1> dqL;
+  Eigen::Matrix<double, 7, 1> dqR;
   
   Eigen::Matrix<double, 7, 1> opt_torque_cmdL;
   Eigen::Matrix<double, 7, 1> opt_torque_cmdR;
