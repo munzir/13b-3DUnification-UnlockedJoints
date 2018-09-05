@@ -1,9 +1,10 @@
 //To-Do 
-//  - Read from Beta?
-//  - Set Frictions
-//  - Set forces for 3x1 block in PID section? (What is this)
+// *- Read from Beta?
+// *- Set Frictions
+// *- Set Velocites for 3x1 block in PID section? (What is this - it is for base->torso)
 //	- Compare gain values and add/delete accordingly
-//  - Check PID equations
+// *- Check PID equations
+//	- Check that Speed Reg is not used in working 27
 
 /*
  * Copyright (c) 2014-2016, Humanoid Lab, Georgia Tech Research Corporation
@@ -60,6 +61,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // std::cout << "[controller] DoF: " << dof << std::endl;
 
   mForces.setZero(19);
+  mKvJoint.setZero();
 
   mSteps = 0;
 
@@ -122,6 +124,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     // -- COM Angle Based Control or not
     mCOMAngleControl = cfg->lookupBoolean(scope, "COMAngleControl"); 
     mMaintainInitCOMDistance = cfg->lookupBoolean(scope, "maintainInitCOMDistance"); 
+	
+	str = cfg->lookupString(scope, "KvJoint");
+    stream.str(str); for(int i=0; i<7; i++) stream >> mKvJoint(i, i); stream.clear();
 
     // -- Torque Limits
     str = cfg->lookupString(scope, "tauLim"); 
@@ -209,7 +214,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "inverseKinematicsOnArms: " << (mInverseKinematicsOnArms?"true":"false") << endl; 
   cout << "COMControlInLowLevel: " << (mCOMControlInLowLevel?"true":"false") << endl; 
   cfg->destroy();
-
+  
   // PBal and bBal size based on mCOMAngleControl
   if(mCOMAngleControl) {
     mPBal = Eigen::MatrixXd::Zero(1, 18);
@@ -230,11 +235,30 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mZeroCol.setZero();
   mZero7Col.setZero();
   
+    Eigen::MatrixXd beta 
+      = readInputFileAsMatrix("../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
+
   // Set Beta parameters after reading them. Set torqueLow/High values
   for(int i=1; i<numBodies; i++) {
-  
+	mRotorInertia(i-1, i-1) = beta(ind + 10)*mGR_array[i-1]*mGR_array[i-1];
+    mViscousFriction(i-1, i-1) = beta(ind + 11);
+    mCoulombFriction(i-1, i-1) = beta(ind + 12);
+	
     torqueLow(i-1) = mKm_array[i-1]*mGR_array[i-1]*currLow(i-1);
     torqueHigh(i-1) = mKm_array[i-1]*mGR_array[i-1]*currHigh(i-1);
+  }
+  
+  // Set left arm frictions
+  for (int i = 4; i < 12; i++){
+	  std::size_t index = 0;
+	  mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-4,i-4)/10);
+	  mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-4,i-4)/10);
+  }
+  // Set right arm frictions
+  for (int i = 12; i < 18; i++){
+	  std::size_t index = 0;
+	  mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-12,i-12)/10);
+	  mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-12,i-12)/10);
   }
 
   // **************************** if waist locked, dimesion of decision variable in QP should be reduced by one
@@ -342,7 +366,6 @@ void Controller::updateSpeeds(){
   mdRot0 << (-sin(mpsi)*mdpsi), (cos(mpsi)*mdpsi), 0,
            (-cos(mpsi)*mdpsi), (-sin(mpsi)*mdpsi), 0,
            0, 0, 0;
-
 }
 
 void Controller::updateTransformJacobian() {
@@ -525,7 +548,8 @@ void Controller::setLeftOrientationOptParams(const Eigen::Vector3d& _LeftTargetR
     mbOrL = -mWOrL*(dJwL*mdqBody - dwref);
   } 
   else {
-    wref = -mKpOr*quatError_xyz;
+    //wref = -mKpOr*quatError_xyz;
+	wref = -mKpOr*quatError_xyz - mKvOr*w;
     mPOrL = mWOrL*JwL;
     mbOrL = mWOrL*wref;
   }
@@ -584,7 +608,8 @@ void Controller::setRightOrientationOptParams(const Eigen::Vector3d& _RightTarge
     mbOrR = -mWOrR*(dJwR*mdqBody - dwref);
   }
   else {
-    wref = -mKpOr*quatError_xyz;
+    //wref = -mKpOr*quatError_xyz;
+	wref = -mKpOr*quatError_xyz - mKvOr*w;
     mPOrR = mWOrR*JwR;
     mbOrR = mWOrR*wref;
   }
@@ -835,34 +860,6 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     optParamsID = optParams;
   }
 
-  // Spin Based Constraints
-  // const vector<double> inequalityconstraintTol(19, 1e-3);
-  // OptParams inequalityconstraintParams[2];
-  // inequalityconstraintParams[0].P = Eigen::MatrixXd::Zero(19, 18);
-  // inequalityconstraintParams[1].P = Eigen::MatrixXd::Zero(19, 18);
-  // inequalityconstraintParams[0].b = Eigen::VectorXd::Zero(19);
-  // inequalityconstraintParams[1].b = Eigen::VectorXd::Zero(19);
-
-  // // Upper Limits   
-  // inequalityconstraintParams[0].P.bottomLeftCorner(17, 18) = mMM.bottomLeftCorner(17, 18);
-  // inequalityconstraintParams[0].b.tail(17) = -mhh.tail(17) + mTauLim.tail(17);
-  
-  // inequalityconstraintParams[0].P.row(0) = -0.5*mMM.row(0);
-  // inequalityconstraintParams[0].b(0) = mhh(0)/2 + mTauLim(0)/2 - mR/mL*tau_0;
-
-  // inequalityconstraintParams[0].P.row(1) = -0.5*mMM.row(0);
-  // inequalityconstraintParams[0].b(1) = mhh(0)/2 + mTauLim(0)/2 + mR/mL*tau_0;
-
-  // // Lower Limits
-  // inequalityconstraintParams[1].P.bottomLeftCorner(17, 18) = -mMM.bottomLeftCorner(17, 18);
-  // inequalityconstraintParams[1].b.tail(17) = mhh.tail(17) + mTauLim.tail(17);
-
-  // inequalityconstraintParams[1].P.row(0) = 0.5*mMM.row(0);
-  // inequalityconstraintParams[1].b(0) = -mhh(0)/2 + mTauLim(0)/2 + mR/mL*tau_0;
-
-  // inequalityconstraintParams[1].P.row(1) = 0.5*mMM.row(0);
-  // inequalityconstraintParams[1].b(1) = -mhh(0)/2 + mTauLim(0)/2 - mR/mL*tau_0;
-
   const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
   OptParams inequalityconstraintParams[2];
   inequalityconstraintParams[0].P = mMM;
@@ -899,15 +896,28 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   mForces.tail(mOptDim-1) = bodyTorques.tail(mOptDim-1);
   if(mInverseKinematicsOnArms){
     const vector<size_t > dqIndex{11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
-    //WRONG USE PID mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
+    //WRONG, USE PID INSTEAD OF: mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
 	
-	// Get current dqs from robot arms
+	// Get current dqs of left and right arms respectively
+	dqL = mdqBody.segment(4,7);
+	dqR = mdqBody.segment(11,7);
 	
 	// Calculate opt_torque_cmd
+	opt_torque_cmdL = -mKvJoint*(dqL - mddqBodyRef.segment(4,7));
+	opt_torque_cmdR = -mKvJoint*(dqR - mddqBodyRef.segment(11,7));
 	
 	// Set lmtd_torque_cmd
+	for(int i = 0; i<7; i++){
+		lmtd_torque_cmdL(i) = std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdL(i))); 
+		lmtd_torque_cmdR(i) = std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdR(i))); 
+	}
 	
 	// Set Forces
+	const vector<size_t > forceIndexL{11, 12, 13, 14, 15, 16, 17};
+	const vector<size_t > forceIndexR{18, 19, 20, 21, 22, 23, 24};
+	mRobot->setForces(lmtd_torque_cmdL);
+	mRobot->setForces(lmtd_torque_cmdR);
+	
 
     if(mCOMControlInLowLevel) {
       const vector<size_t > forceIndex{6, 7, 8, 9, 10};
