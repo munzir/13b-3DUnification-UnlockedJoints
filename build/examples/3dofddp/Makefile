@@ -179,6 +179,33 @@ Controller.cpp.s:
 	cd /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/Controller.cpp.s
 .PHONY : Controller.cpp.s
 
+file_ops.o: file_ops.cpp.o
+
+.PHONY : file_ops.o
+
+# target to build an object file
+file_ops.cpp.o:
+	cd /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/file_ops.cpp.o
+.PHONY : file_ops.cpp.o
+
+file_ops.i: file_ops.cpp.i
+
+.PHONY : file_ops.i
+
+# target to preprocess a source file
+file_ops.cpp.i:
+	cd /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/file_ops.cpp.i
+.PHONY : file_ops.cpp.i
+
+file_ops.s: file_ops.cpp.s
+
+.PHONY : file_ops.s
+
+# target to generate assembly for a file
+file_ops.cpp.s:
+	cd /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build && $(MAKE) -f examples/3dofddp/CMakeFiles/3dofddp.dir/build.make examples/3dofddp/CMakeFiles/3dofddp.dir/file_ops.cpp.s
+.PHONY : file_ops.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -194,6 +221,9 @@ help:
 	@echo "... Controller.o"
 	@echo "... Controller.i"
 	@echo "... Controller.s"
+	@echo "... file_ops.o"
+	@echo "... file_ops.i"
+	@echo "... file_ops.s"
 .PHONY : help
 
 

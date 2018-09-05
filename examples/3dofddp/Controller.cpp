@@ -100,7 +100,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // *********************************** Tunable Parameters
   Configuration *  cfg = Configuration::create();
   const char *     scope = "";
-  const char *     configFile = "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+  const char *     configFile = "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
   const char * str;
   std::istringstream stream;
   double newDouble;
@@ -235,12 +235,14 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mZeroCol.setZero();
   mZero7Col.setZero();
   
-    Eigen::MatrixXd beta 
+  Eigen::MatrixXd beta 
       = readInputFileAsMatrix("../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
 
+  int paramsPerBody = 13;
   // Set Beta parameters after reading them. Set torqueLow/High values
-  for(int i=1; i<numBodies; i++) {
-	mRotorInertia(i-1, i-1) = beta(ind + 10)*mGR_array[i-1]*mGR_array[i-1];
+  for(int i=1; i<8; i++) {
+    int ind = paramsPerBody*(i-1);
+	  mRotorInertia(i-1, i-1) = beta(ind + 10)*mGR_array[i-1]*mGR_array[i-1];
     mViscousFriction(i-1, i-1) = beta(ind + 11);
     mCoulombFriction(i-1, i-1) = beta(ind + 12);
 	
@@ -814,24 +816,24 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   
   // ***************************** QP
   OptParams optParams, optParamsID;
-  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mOptDim);
+  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() /*+ mPSpeedReg.rows()*/ + mPReg.rows(), mOptDim);
   P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim-1),
        mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim-1),
        mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim-1),
        mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim-1),
        mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim-1),
        mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim-1),
-       mPSpeedReg.col(0), mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim-1),
+       /*mPSpeedReg.col(0), mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim-1),*/
        mPReg.col(0), mPReg.topRightCorner(mPReg.rows(), mOptDim-1);
   
-  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() + mbReg.rows(), mbEER.cols() );
+  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() /*+ mbSpeedReg.rows()*/ + mbReg.rows(), mbEER.cols() );
   b << mbEER,
        mbOrR,
        mbEEL,
        mbOrL,
        mbBal,
        mbPose,
-       mbSpeedReg,
+       /*mbSpeedReg,*/
        mbReg;
   optParams.P = P;
   optParams.b = b;
@@ -853,47 +855,47 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     }
     for(int i=0; i<mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];  
 
-    optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
-    optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
+    // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
+    // optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
   }
   else {
     optParamsID = optParams;
   }
 
-  const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
-  OptParams inequalityconstraintParams[2];
-  inequalityconstraintParams[0].P = mMM;
-  inequalityconstraintParams[1].P = -mMM;
-  inequalityconstraintParams[0].b = -mhh + mTauLim;
-  inequalityconstraintParams[1].b = mhh + mTauLim;
-
-  
-  //nlopt::opt opt(nlopt::LN_COBYLA, 30);
-  nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
-  double minf;
-  opt.set_min_objective(optFunc, &optParamsID);
-  // Only add inequalities for Inverse Dynamics
   if(!mInverseKinematicsOnArms){
-	  opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[0], inequalityconstraintTol);
-	  opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[1], inequalityconstraintTol);
-  }
-  opt.set_xtol_rel(1e-3);
-  if(maxTimeSet) opt.set_maxtime(0.01);
-  vector<double> ddqBodyRef_vec(mOptDim);
-  Eigen::VectorXd::Map(&ddqBodyRef_vec[0], mddqBodyRef.size()) = mddqBodyRef;
-  try{
-    nlopt::result result = opt.optimize(ddqBodyRef_vec, minf);
-  }
-  catch(std::exception &e) {
-      // std::cout << "nlopt failed: " << e.what() << std::endl;
-  }
-  for(int i=0; i<mOptDim; i++) mddqBodyRef(i) = ddqBodyRef_vec[i];
+    const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
+    OptParams inequalityconstraintParams[2];
+    inequalityconstraintParams[0].P = mMM;
+    inequalityconstraintParams[1].P = -mMM;
+    inequalityconstraintParams[0].b = -mhh + mTauLim;
+    inequalityconstraintParams[1].b = mhh + mTauLim;
 
-  // ************************************ Torques
-  Eigen::VectorXd bodyTorques = mMM*mddqBodyRef + mhh;
-  mForces(0) = -mR/mL*tau_0 - bodyTorques(0)/2;
-  mForces(1) =  mR/mL*tau_0 - bodyTorques(0)/2;
-  mForces.tail(mOptDim-1) = bodyTorques.tail(mOptDim-1);
+    
+    //nlopt::opt opt(nlopt::LN_COBYLA, 30);
+    nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
+    double minf;
+    opt.set_min_objective(optFunc, &optParamsID);
+    opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[0], inequalityconstraintTol);
+    opt.add_inequality_mconstraint(constraintFunc, &inequalityconstraintParams[1], inequalityconstraintTol);
+    opt.set_xtol_rel(1e-3);
+    if(maxTimeSet) opt.set_maxtime(0.01);
+    vector<double> ddqBodyRef_vec(mOptDim);
+    Eigen::VectorXd::Map(&ddqBodyRef_vec[0], mddqBodyRef.size()) = mddqBodyRef;
+    try{
+      nlopt::result result = opt.optimize(ddqBodyRef_vec, minf);
+    }
+    catch(std::exception &e) {
+        // std::cout << "nlopt failed: " << e.what() << std::endl;
+    }
+    for(int i=0; i<mOptDim; i++) mddqBodyRef(i) = ddqBodyRef_vec[i];
+
+    // ************************************ Torques
+    Eigen::VectorXd bodyTorques = mMM*mddqBodyRef + mhh;
+    mForces(0) = -mR/mL*tau_0 - bodyTorques(0)/2;
+    mForces(1) =  mR/mL*tau_0 - bodyTorques(0)/2;
+    mForces.tail(mOptDim-1) = bodyTorques.tail(mOptDim-1);
+  }
+
   if(mInverseKinematicsOnArms){
     const vector<size_t > dqIndex{11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     //WRONG, USE PID INSTEAD OF: mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
@@ -903,8 +905,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
 	dqR = mdqBody.segment(11,7);
 	
 	// Calculate opt_torque_cmd
-	opt_torque_cmdL = -mKvJoint*(dqL - mddqBodyRef.segment(4,7));
-	opt_torque_cmdR = -mKvJoint*(dqR - mddqBodyRef.segment(11,7));
+	opt_torque_cmdL = -mKvJoint*(dqL - mdqBodyRef.segment(4,7));
+	opt_torque_cmdR = -mKvJoint*(dqR - mdqBodyRef.segment(11,7));
 	
 	// Set lmtd_torque_cmd
 	for(int i = 0; i<7; i++){
@@ -915,8 +917,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
 	// Set Forces
 	const vector<size_t > forceIndexL{11, 12, 13, 14, 15, 16, 17};
 	const vector<size_t > forceIndexR{18, 19, 20, 21, 22, 23, 24};
-	mRobot->setForces(lmtd_torque_cmdL);
-	mRobot->setForces(lmtd_torque_cmdR);
+	mRobot->setForces(forceIndexL, lmtd_torque_cmdL);
+	mRobot->setForces(forceIndexR, lmtd_torque_cmdR);
 	
 
     if(mCOMControlInLowLevel) {
@@ -951,8 +953,10 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   }
 
   if(mSteps < 0) {
-    cout << "ddqBodyRef: " << endl; for(int i=0; i<18; i++) {cout << mddqBodyRef(i) << ", ";} cout << endl;
-    cout << "ddqBodyRef_vec: " << endl; for(int i=0; i<18; i++) {cout << ddqBodyRef_vec[i] << ", ";} cout << endl;
+    // cout << "ddqBodyRef: " << endl; for(int i=0; i<18; i++) {cout << mddqBodyRef(i) << ", ";} cout << endl;
+    // cout << "ddqBodyRef_vec: " << endl; for(int i=0; i<18; i++) {cout << ddqBodyRef_vec[i] << ", ";} cout << endl;
+    // cout << "dqBodyRef: " << endl; for(int i=0; i<18; i++) {cout << mdqBodyRef(i) << ", ";} cout << endl;
+    // cout << "dqBodyRef_vec: " << endl; for(int i=0; i<18; i++) {cout << dqBodyRef_vec[i] << ", ";} cout << endl;
   }
   
   // if(mSteps%(maxTimeSet==1?30:30) == 0) 

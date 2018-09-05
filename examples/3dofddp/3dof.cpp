@@ -40,7 +40,7 @@ class MyWindow : public dart::gui::SimWindow {
       // *********************************** Tunable Parameters
       Configuration *  cfg = Configuration::create();
       const char *     scope = "";
-      const char *     configFile = "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+      const char *     configFile = "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
       const char * str;
       std::istringstream stream;
       double newDouble;
@@ -622,7 +622,7 @@ SkeletonPtr MyWindow::create3DOF_URDF(SkeletonPtr krang) {
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   SkeletonPtr threeDOF = 
-      loader.parseSkeleton("/home/panda/myfolder/wholebodycontrol/09-URDF/3DOF-WIP/3dof.urdf");
+      loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/3DOF-WIP/3dof.urdf");
   threeDOF->setName("m3DOF");
   
   threeDOF->getJoint(0)->setDampingCoefficient(0, 0.5);
@@ -1072,10 +1072,13 @@ dart::dynamics::SkeletonPtr createKrang() {
   
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr krang;
-  ifstream file;
-  char line [1024];
-  std::istringstream stream;
-  Eigen::Matrix<double, 24, 1> initPoseParams; // heading, qBase, x, y, z, qLWheel, qRWheel, qWaist, qTorso, qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
+  // ifstream file;
+  // char line [1024];
+  // std::istringstream stream;
+  Eigen::Matrix<double, 24, 1> initPoseParams;
+  initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0,    0.0,    -4.2976,   0.053232, -0.0575697,  
+       -1.36631,  -0.495357,   0.969689,   -1.55801,  -0.421576,   -1.27307,   -1.35663,    
+       1.2217,   0.606397,   -0.91889,    1.50091,   0.516969,    1.31059,    1.26479; // heading, qBase, x, y, z, qLWheel, qRWheel, qWaist, qTorso, qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
   size_t i;
   double newDouble, headingInit, qBaseInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, th;
   Eigen::Vector3d xyzInit, COM;
@@ -1086,17 +1089,17 @@ dart::dynamics::SkeletonPtr createKrang() {
   Eigen::Matrix<double, 25, 1> q;
 
   // Load the Skeleton from a file
-  krang = loader.parseSkeleton("/home/panda/myfolder/wholebodycontrol/09-URDF/Krang/KrangOld.urdf");
+  krang = loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/Krang/KrangOld.urdf");
   krang->setName("krang");
 
   // Read initial pose from the file
-  file = ifstream("/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/defaultInit.txt");
-  assert(file.is_open());
-  file.getline(line, 1024);
-  stream = std::istringstream(line);
-  i = 0;
-  while((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
-  file.close();
+  // file = ifstream("/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/defaultInit.txt");
+  // assert(file.is_open());
+  // file.getline(line, 1024);
+  // stream = std::istringstream(line);
+  // i = 0;
+  // while((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
+  // file.close();
   headingInit = initPoseParams(0);
   qBaseInit = initPoseParams(1);
   xyzInit << initPoseParams.segment(2,3);
@@ -1144,7 +1147,7 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee) {
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr tray =
-      loader.parseSkeleton("/home/panda/myfolder/wholebodycontrol/09-URDF/scenes/tray.urdf");
+      loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/scenes/tray.urdf");
   tray->setName("tray");
 
   // Orientation
@@ -1177,7 +1180,7 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr cup =
-      loader.parseSkeleton("/home/panda/myfolder/wholebodycontrol/09-URDF/scenes/cup.urdf");
+      loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/scenes/cup.urdf");
   cup->setName("cup");
 
   // Orientation
@@ -1219,7 +1222,7 @@ int main(int argc, char* argv[]) {
   bool loadTray, loadCup; double trayCupFriction;
   Configuration *  cfg = Configuration::create();
   const char *     scope = "";
-  const char *     configFile = "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+  const char *     configFile = "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
   try {
     cfg->parse(configFile);
     loadTray = cfg->lookupBoolean(scope, "tray"); 
