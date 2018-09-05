@@ -125,12 +125,25 @@ public:
   /// \brief Control forces
   Eigen::Matrix<double, 19, 1> mForces;
   
+  Eigen::Matrix<double, 7, 7> mRotorInertia, mViscousFriction, mCoulombFriction;
+  
+    Eigen::Matrix<double, 7, 7> mKvJoint;
+  
   double mKm_array[7] = {31.4e-3, 31.4e-3, 38e-3, 38e-3, 16e-3, 16e-3, 16e-3};
   double mGR_array[7] = {596, 596, 625, 625, 552, 552, 552};
   Eigen::Matrix<double, 7, 1> currLow;
   Eigen::Matrix<double, 7, 1> currHigh; 
   Eigen::Matrix<double, 7, 1> torqueLow;
   Eigen::Matrix<double, 7, 1> torqueHigh; 
+  
+  Eigen::Matrix<double, 7, 1> dqL = mdqBody.segment(4,7);
+  Eigen::Matrix<double, 7, 1> dqR
+  
+  Eigen::Matrix<double, 7, 1> opt_torque_cmdL;
+  Eigen::Matrix<double, 7, 1> opt_torque_cmdR;
+  
+  Eigen::Matrix<double, 7, 1> lmtd_torque_cmdL;
+  Eigen::Matrix<double, 7, 1> lmtd_torque_cmdR;
 
   size_t mSteps;
 
