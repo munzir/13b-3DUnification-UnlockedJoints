@@ -964,9 +964,6 @@ void MyWindow::timeStepping() {
       mkrang->setForces(index, mForces);
     }
   }
-  
-
-  
   SimWindow::timeStepping();
 }
 

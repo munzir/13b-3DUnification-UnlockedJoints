@@ -6,6 +6,9 @@
 // *- Check PID equations
 //	- Check that Speed Reg is not used in working 27
 
+//Things I did
+// removed extra damping coefficient set in line 93
+
 /*
  * Copyright (c) 2014-2016, Humanoid Lab, Georgia Tech Research Corporation
  * Copyright (c) 2014-2017, Graphics Lab, Georgia Tech Research Corporation
@@ -88,9 +91,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // std::cout << "Position Limit Enforced set to false" << std::endl;
 
   // ************** Set joint damping
-  for(int i = 6; i < dof-1; ++i)
-    _robot->getJoint(i)->setDampingCoefficient(0, 0.5);
-  // std::cout << "Damping coefficients set" << std::endl;
+  // for(int i = 6; i < dof-1; ++i)
+  //   _robot->getJoint(i)->setDampingCoefficient(0, 0.5);
+  // // std::cout << "Damping coefficients set" << std::endl;
 
   mdqFilt = new filter(25, 100);
 
@@ -249,18 +252,20 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     torqueLow(i-1) = mKm_array[i-1]*mGR_array[i-1]*currLow(i-1);
     torqueHigh(i-1) = mKm_array[i-1]*mGR_array[i-1]*currHigh(i-1);
   }
+
+  // cout << "mViscousFriction:" << mViscousFriction.transpose() << endl;
   
   // Set left arm frictions
-  for (int i = 4; i < 12; i++){
-	  std::size_t index = 0;
-	  mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-4,i-4)/10);
-	  mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-4,i-4)/10);
+  for (int i = 6; i < 13; i++){
+    std::size_t index = 0;
+    mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-6,i-6)/10);
+    mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-6,i-6)/10);
   }
   // Set right arm frictions
-  for (int i = 12; i < 18; i++){
-	  std::size_t index = 0;
-	  mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-12,i-12)/10);
-	  mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-12,i-12)/10);
+  for (int i = 15; i < 22; i++){
+    std::size_t index = 0;
+    mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-15,i-15)/10);
+    mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-15,i-15)/10);
   }
 
   // **************************** if waist locked, dimesion of decision variable in QP should be reduced by one
@@ -346,6 +351,7 @@ void Controller::updatePositions(){
   mxyz0 = mq.segment(3,3); // position of frame 0 in the world frame represented in the world frame
   mpsi =  atan2(mBaseTf(0,0), -mBaseTf(1,0));
   mqBody1 = atan2(mBaseTf(0,1)*cos(mpsi) + mBaseTf(1,1)*sin(mpsi), mBaseTf(2,1));
+
   mqBody(0) = mqBody1;
   mqBody.tail(17) = mq.tail(17);
   mRot0 << cos(mpsi), sin(mpsi), 0,
@@ -371,20 +377,6 @@ void Controller::updateSpeeds(){
 }
 
 void Controller::updateTransformJacobian() {
-  // ********************************* Transform Jacobian
-  // Coordinate Transformation to minimum set of coordinates
-  // dq0 = -dq_1
-  // dq1 = dpsi*cos(q_1)
-  // dq2 = dpsi*sin(q_1)
-  // dq3 = 0
-  // dq4 = dx*sin(q_1)
-  // dq5 = -dx*cos(q_1)
-  // dq6 = dx/R - (L/(2*R))*dpsi - dq_1
-  // dq7 = dx/R + (L/(2*R))*dpsi - dq_1
-  // dq8 = dq_2
-  // dq9 = dq_3
-  // [dq0 dq1 dq2 dq3 dq4 dq5 dq6 dq7]' = J*[dx dpsi dq_1]'; 
-  // where
   
   mJtf.topLeftCorner(8, 3) <<        0,            0,        -1,
                                      0, cos(mqBody1),         0,
@@ -816,24 +808,24 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
   
   // ***************************** QP
   OptParams optParams, optParamsID;
-  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() /*+ mPSpeedReg.rows()*/ + mPReg.rows(), mOptDim);
+  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() + mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() + mPReg.rows(), mOptDim);
   P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim-1),
        mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim-1),
        mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim-1),
        mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim-1),
        mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim-1),
        mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim-1),
-       /*mPSpeedReg.col(0), mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim-1),*/
+       mPSpeedReg.col(0), mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim-1),
        mPReg.col(0), mPReg.topRightCorner(mPReg.rows(), mOptDim-1);
   
-  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() /*+ mbSpeedReg.rows()*/ + mbReg.rows(), mbEER.cols() );
+  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() + mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() + mbReg.rows(), mbEER.cols() );
   b << mbEER,
        mbOrR,
        mbEEL,
        mbOrL,
        mbBal,
        mbPose,
-       /*mbSpeedReg,*/
+       mbSpeedReg,
        mbReg;
   optParams.P = P;
   optParams.b = b;
@@ -848,7 +840,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     vector<double> dqBodyRef_vec(mOptDim);
     Eigen::VectorXd::Map(&dqBodyRef_vec[0], mdqBodyRef.size()) = mdqBodyRef;
     try{
-      nlopt::result result = opt.optimize(dqBodyRef_vec, minf);
+      // nlopt::result result = opt.optimize(dqBodyRef_vec, minf);
+      opt.optimize(dqBodyRef_vec, minf);
     }
     catch(std::exception &e) {
         // std::cout << "nlopt failed: " << e.what() << std::endl;
@@ -900,25 +893,27 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
     const vector<size_t > dqIndex{11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     //WRONG, USE PID INSTEAD OF: mRobot->setVelocities(dqIndex, mdqBodyRef.tail(14));
 	
-	// Get current dqs of left and right arms respectively
-	dqL = mdqBody.segment(4,7);
-	dqR = mdqBody.segment(11,7);
-	
-	// Calculate opt_torque_cmd
-	opt_torque_cmdL = -mKvJoint*(dqL - mdqBodyRef.segment(4,7));
-	opt_torque_cmdR = -mKvJoint*(dqR - mdqBodyRef.segment(11,7));
-	
-	// Set lmtd_torque_cmd
-	for(int i = 0; i<7; i++){
-		lmtd_torque_cmdL(i) = std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdL(i))); 
-		lmtd_torque_cmdR(i) = std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdR(i))); 
-	}
-	
-	// Set Forces
-	const vector<size_t > forceIndexL{11, 12, 13, 14, 15, 16, 17};
-	const vector<size_t > forceIndexR{18, 19, 20, 21, 22, 23, 24};
-	mRobot->setForces(forceIndexL, lmtd_torque_cmdL);
-	mRobot->setForces(forceIndexR, lmtd_torque_cmdR);
+  	// Get angular velocities of left and right arm joints respectively
+  	dqL = mdqBody.segment(4,7);
+  	dqR = mdqBody.segment(11,7);
+  	
+  	// Calculate opt_torque_cmd
+    // cout << "size mdqBodyRef: " << mdqBodyRef.rows() << "x" << mdqBodyRef.cols() << endl;
+    // cout << "mdqBodyRef: " << mdqBodyRef.transpose() << endl;
+  	opt_torque_cmdL = -mKvJoint*(dqL - mdqBodyRef.segment(3,7));
+  	opt_torque_cmdR = -mKvJoint*(dqR - mdqBodyRef.segment(10,7));
+  	
+  	// Set lmtd_torque_cmd
+  	for(int i = 0; i<7; i++){
+  		lmtd_torque_cmdL(i) = std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdL(i))); 
+  		lmtd_torque_cmdR(i) = std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdR(i))); 
+  	}
+  	
+  	// Set Forces
+  	const vector<size_t > forceIndexL{11, 12, 13, 14, 15, 16, 17};
+  	const vector<size_t > forceIndexR{18, 19, 20, 21, 22, 23, 24};
+  	mRobot->setForces(forceIndexL, lmtd_torque_cmdL);
+  	mRobot->setForces(forceIndexR, lmtd_torque_cmdR);
 	
 
     if(mCOMControlInLowLevel) {
@@ -929,7 +924,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,const Eigen::
       const vector<size_t > dqIndex2{8, 9, 10};
       mRobot->setVelocities(dqIndex2, mdqBodyRef.segment(2, 3));
     }
-  } 
+  }
   else {
     const vector<size_t > index{6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     mRobot->setForces(index, mForces);
