@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/3dofddp.dir/Controller.cpp.o"
   "CMakeFiles/3dofddp.dir/3dof.cpp.o"
+  "CMakeFiles/3dofddp.dir/Controller.cpp.o"
   "3dofddp.pdb"
   "3dofddp"
 )
