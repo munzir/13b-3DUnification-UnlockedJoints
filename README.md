@@ -9,7 +9,7 @@
 * Clone this repository
 
 ## Use
-Before compiling the code, the local absolute path to this repo and to repo 09-URDF needs to be specified at various locations in the source files: examples/3dofddp/3dof.cpp (7 different places) and examples/3dofddp/Controller.cpp (1 place). You can find these places by searching for "13b-3DUnification" and "09-URDF" in these sources files. 
+Before compiling the code, specify the path to your local copy of repo 09-URDF in the "urdfpath" entry of the configuration file located at examples/3dofddp/controlParams.cfg. In the same file, there are many other configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
 
 To compile:
 
