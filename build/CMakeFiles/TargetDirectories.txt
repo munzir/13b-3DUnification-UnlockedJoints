@@ -1,7 +1,7 @@
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles/edit_cache.dir
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/CMakeFiles/rebuild_cache.dir
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/CMakeFiles/edit_cache.dir
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/CMakeFiles/rebuild_cache.dir
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/edit_cache.dir
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/rebuild_cache.dir
-/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/3dofddp.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/CMakeFiles/rebuild_cache.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/CMakeFiles/edit_cache.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/CMakeFiles/rebuild_cache.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/CMakeFiles/edit_cache.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/rebuild_cache.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/3dofddp.dir
+/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/edit_cache.dir

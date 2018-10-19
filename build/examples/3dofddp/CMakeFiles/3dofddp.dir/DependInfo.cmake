@@ -4,8 +4,8 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/3dof.cpp" "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o"
-  "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.cpp" "/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/3dofddp.dir/Controller.cpp.o"
+  "/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/examples/3dofddp/3dof.cpp" "/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/3dofddp.dir/3dof.cpp.o"
+  "/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/examples/3dofddp/Controller.cpp" "/home/munzir/Documents/Fri-Pres/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/CMakeFiles/3dofddp.dir/Controller.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
@@ -18,7 +18,6 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
   "../eigen"
   "../include"
-  "/usr/local/include"
   "/usr/include/eigen3"
   )
 
