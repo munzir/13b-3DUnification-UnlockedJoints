@@ -23,7 +23,7 @@ using namespace dart::simulation;
 using namespace dart::math;
 using namespace config4cpp;
 
-class MyWindow : public dart::gui::SimWindow {
+class MyWindow : public dart::gui::glut::SimWindow {
   using Scalar = double;
   using Dynamics = Krang3D<Scalar>;
   using DDP_Opt = optimizer::DDP<Dynamics>;
