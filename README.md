@@ -1,6 +1,6 @@
 # Whole Body Control of Krang Simulation
 
-## Setup
+## Dependencies
 
 - DART
  [Dart Homepage](https://dartsim.github.io)
