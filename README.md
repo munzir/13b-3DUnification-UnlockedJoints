@@ -32,11 +32,10 @@
 - Install [Qt](https://www.qt.io/download-open-source/)
 
 ## Use
-Before compiling the code, specify the path to your local copy of repo 09-URDF in the "urdfpath" entry of the configuration file located at examples/3dofddp/controlParams.cfg. In the same file, there are many other configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
+In `examples/3dofddp/controlParams.cfg`, there are many configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
 
 To compile:
 
-    rm -r build
     mkdir build
     cd build
     cmake -DCMAKE_BUILD_TYPE=Release ..
