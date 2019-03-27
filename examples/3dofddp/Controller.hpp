@@ -42,7 +42,7 @@
 #include <iostream>
 
 // using namespace dart;
-// using namespace std;  
+// using namespace std;
 // using namespace config4cpp;
 
 class filter {
@@ -54,7 +54,7 @@ class filter {
     }
     void AddSample(Eigen::VectorXd v)
     {
-      if(samples.full()) 
+      if(samples.full())
       {
         total -= samples.front();
       }
@@ -62,11 +62,11 @@ class filter {
       total += v;
       average = total/samples.size();
     }
-  
+
     boost::circular_buffer<Eigen::VectorXd> samples;
     Eigen::VectorXd total;
     Eigen::VectorXd average;
-    
+
 };
 
 /// \brief Operational space controller for 6-dof manipulator
@@ -140,7 +140,7 @@ public:
   Eigen::Matrix3d mKpEE, mKpOr;
   Eigen::Matrix3d mKvEE, mKvOr;
   double mKpCOM, mKvCOM;
-  double mKvSpeedReg; 
+  double mKvSpeedReg;
   double mKpPose, mKvPose;
 
   double mWOrR, mWOrL, mWSpeedReg, mWReg, mWPose;
@@ -154,12 +154,12 @@ public:
   Eigen::Vector3d mxyz0; // position of frame 0 in the world frame represented in the world frame
   double mpsi;
   double mqBody1;
-  Eigen::Matrix<double, 18, 1> mqBody; 
-  
+  Eigen::Matrix<double, 18, 1> mqBody;
+
   Eigen::Matrix<double, 25, 1> mdq;
   Eigen::Vector3d mdxyz0;
   double mdx, mdqBody1, mdpsi;
-  Eigen::Matrix<double, 18, 1> mdqBody;  
+  Eigen::Matrix<double, 18, 1> mdqBody;
   Eigen::Matrix<double, 20, 1> mdqMin;
 
   Eigen::Matrix3d mRot0, mdRot0;
@@ -173,10 +173,10 @@ public:
   Eigen::Matrix<double, 18, 18> mPPose, mPSpeedReg, mPReg;
   Eigen::Matrix<double, 18, 1> mbPose, mbSpeedReg, mbReg;
   bool mCOMAngleControl, mMaintainInitCOMDistance;
-  
+
 
   Eigen::Matrix<double, 3, 1> mZeroCol;
-  Eigen::Matrix<double, 3, 7> mZero7Col;  
+  Eigen::Matrix<double, 3, 7> mZero7Col;
 
   Eigen::MatrixXd mMM;
   Eigen::VectorXd mhh;
