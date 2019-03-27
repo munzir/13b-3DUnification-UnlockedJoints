@@ -23,7 +23,7 @@ using namespace dart::simulation;
 using namespace dart::math;
 using namespace config4cpp;
 
-class MyWindow : public dart::gui::SimWindow {
+class MyWindow : public dart::gui::glut::SimWindow {
   using Scalar = double;  
   using Dynamics = Krang3D<Scalar>;
   using DDP_Opt = optimizer::DDP<Dynamics>;
@@ -173,11 +173,16 @@ class MyWindow : public dart::gui::SimWindow {
       mRightTargetRPY = dart::math::matrixToEulerXYZ(Rot0*mController->getEndEffector("right")->getTransform().rotation());
 
       // Camera View
-      mTrackBallRot << 0.370763,  0.897987, -0.236967,
-                  -0.273914,  0.349534,  0.895989,
-                  0.887415, -0.267292,  0.375566;
+      // mTrackBallRot << 0.370763,  0.897987, -0.236967,
+      //             -0.273914,  0.349534,  0.895989,
+      //             0.887415, -0.267292,  0.375566;
+
+      mTrackBallRot << 1, 0, 0,
+                        0, 0, 1,
+                        0, -1, 0;
+
       mTrackBall.setQuaternion(Eigen::Quaterniond(mTrackBallRot));
-      mZoom = 0.25;
+      // mZoom = 0.25;
 
     }
 
@@ -975,17 +980,19 @@ void MyWindow::render() {
   if(mPlayFrame) { steps = mPlayFrame; }
   else { steps = mWorld->getTime()*1000; }
   
-  if(mContinuousZoom){
-    mZoom = min(0.25, max(0.11, 0.25+((0.25-0.11)/(0-3200))*steps));
-    glutPostRedisplay();
-  }
-  else {
-    if(steps < 800) { mZoom = 0.25; glutPostRedisplay(); }
-    else if(steps < 1600) {mZoom = 0.215; glutPostRedisplay(); }
-    else if(steps < 2400) {mZoom = 0.18; glutPostRedisplay(); }
-    else if(steps < 3200) {mZoom = 0.145; glutPostRedisplay(); }
-    else if(steps > 3200) {mZoom = 0.11; glutPostRedisplay(); }
-  }
+  // if(mContinuousZoom){
+  //   mZoom = min(0.25, max(0.11, 0.25+((0.25-0.11)/(0-3200))*steps));
+  //   glutPostRedisplay();
+  // }
+  // else {
+  //   if(steps < 800) { mZoom = 0.25; glutPostRedisplay(); }
+  //   else if(steps < 1600) {mZoom = 0.215; glutPostRedisplay(); }
+  //   else if(steps < 2400) {mZoom = 0.18; glutPostRedisplay(); }
+  //   else if(steps < 3200) {mZoom = 0.145; glutPostRedisplay(); }
+  //   else if(steps > 3200) {mZoom = 0.11; glutPostRedisplay(); }
+  // }
+
+  mZoom = 0.3;
 
   SimWindow::render();
 }
