@@ -16,13 +16,6 @@
 #include "Controller.hpp"
 #include "krangddp.h"
 
-using namespace std;
-using namespace dart::common;
-using namespace dart::dynamics;
-using namespace dart::simulation;
-using namespace dart::math;
-using namespace config4cpp;
-
 class MyWindow : public dart::gui::glut::SimWindow {
   using Scalar = double;
   using Dynamics = Krang3D<Scalar>;
@@ -35,9 +28,9 @@ class MyWindow : public dart::gui::glut::SimWindow {
   using Control = typename Dynamics::Control;
 
  public:
-  MyWindow(const WorldPtr& world) {
+  MyWindow(const dart::simulation::WorldPtr& world) {
     // *********************************** Tunable Parameters
-    Configuration* cfg = Configuration::create();
+    config4cpp::Configuration* cfg = config4cpp::Configuration::create();
     const char* scope = "";
     const char* configFile = "../../../examples/3dofddp/controlParams.cfg";
     const char* str;
@@ -108,30 +101,37 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
       mWaistLocked = cfg->lookupBoolean(scope, "waistLocked");
 
-    } catch (const ConfigurationException& ex) {
-      cerr << ex.c_str() << endl;
+    } catch (const config4cpp::ConfigurationException& ex) {
+      std::cerr << ex.c_str() << std::endl;
       cfg->destroy();
     }
-    cout << "urdfpath: " << urdfpath << endl;
-    cout << "lockedJoints: " << (mLockedJoints ? "true" : "false") << endl;
-    cout << "initCOMAngle: " << mInitCOMAngle << endl;
-    cout << "goalState: " << mGoalState.transpose() << endl;
-    cout << "finalTime: " << mFinalTime << endl;
-    cout << "DDPMaxIter: " << mDDPMaxIter << endl;
-    cout << "DDPStatePenalties: " << mDDPStatePenalties.transpose() << endl;
-    cout << "DDPTerminalStatePenalties: "
-         << mDDPTerminalStatePenalties.transpose() << endl;
-    cout << "DDPControlPenalties: " << mDDPControlPenalties.transpose() << endl;
-    cout << "beginStep: " << mBeginStep << endl;
-    cout << "MPCMaxIter: " << mMPCMaxIter << endl;
-    cout << "MPCHorizon: " << mMPCHorizon << endl;
-    cout << "MPCStatePenalties: " << mMPCStatePenalties.transpose() << endl;
-    cout << "MPCTerminalStatePenalties: "
-         << mMPCTerminalStatePenalties.transpose() << endl;
-    cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose() << endl;
-    cout << "tauLim: " << mTauLim.transpose() << endl;
-    cout << "continuousZoom: " << (mContinuousZoom ? "true" : "false") << endl;
-    cout << "waistLocked: " << (mWaistLocked ? "true" : "false") << endl;
+    std::cout << "urdfpath: " << urdfpath << std::endl;
+    std::cout << "lockedJoints: " << (mLockedJoints ? "true" : "false")
+              << std::endl;
+    std::cout << "initCOMAngle: " << mInitCOMAngle << std::endl;
+    std::cout << "goalState: " << mGoalState.transpose() << std::endl;
+    std::cout << "finalTime: " << mFinalTime << std::endl;
+    std::cout << "DDPMaxIter: " << mDDPMaxIter << std::endl;
+    std::cout << "DDPStatePenalties: " << mDDPStatePenalties.transpose()
+              << std::endl;
+    std::cout << "DDPTerminalStatePenalties: "
+              << mDDPTerminalStatePenalties.transpose() << std::endl;
+    std::cout << "DDPControlPenalties: " << mDDPControlPenalties.transpose()
+              << std::endl;
+    std::cout << "beginStep: " << mBeginStep << std::endl;
+    std::cout << "MPCMaxIter: " << mMPCMaxIter << std::endl;
+    std::cout << "MPCHorizon: " << mMPCHorizon << std::endl;
+    std::cout << "MPCStatePenalties: " << mMPCStatePenalties.transpose()
+              << std::endl;
+    std::cout << "MPCTerminalStatePenalties: "
+              << mMPCTerminalStatePenalties.transpose() << std::endl;
+    std::cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose()
+              << std::endl;
+    std::cout << "tauLim: " << mTauLim.transpose() << std::endl;
+    std::cout << "continuousZoom: " << (mContinuousZoom ? "true" : "false")
+              << std::endl;
+    std::cout << "waistLocked: " << (mWaistLocked ? "true" : "false")
+              << std::endl;
 
     // Attach the world passed in the input argument to the window, and
     // fetch the robot from the world
@@ -168,7 +168,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
     // Initialize the simplified robot
     m3DOF = create3DOF_URDF(mkrang, urdfpath);
-    mWorld3dof = std::make_shared<World>();
+    mWorld3dof = std::make_shared<dart::simulation::World>();
     mWorld3dof->addSkeleton(m3DOF);
     getSimple(m3DOF, mkrang);
 
@@ -217,11 +217,13 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
   void keyboard(unsigned char _key, int _x, int _y) override;
 
-  SkeletonPtr create3DOF_URDF(SkeletonPtr krang, const char* urdfpath);
+  dart::dynamics::SkeletonPtr create3DOF_URDF(dart::dynamics::SkeletonPtr krang,
+                                              const char* urdfpath);
 
   Eigen::Vector3d getBodyCOM(dart::dynamics::SkeletonPtr robot);
 
-  void getSimple(SkeletonPtr& threeDOF, SkeletonPtr& krang);
+  void getSimple(dart::dynamics::SkeletonPtr& threeDOF,
+                 dart::dynamics::SkeletonPtr& krang);
 
   State getCurrentState();
 
@@ -237,7 +239,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
  protected:
   /// Full robot and low level controller
-  SkeletonPtr mkrang;
+  dart::dynamics::SkeletonPtr mkrang;
   Controller* mController;
   Eigen::Vector3d mLeftTargetPosition;
   Eigen::Vector3d mRightTargetPosition;
@@ -249,8 +251,8 @@ class MyWindow : public dart::gui::glut::SimWindow {
   bool mWaistLocked;
 
   // 3DOF robot
-  WorldPtr mWorld3dof;
-  SkeletonPtr m3DOF;
+  dart::simulation::WorldPtr mWorld3dof;
+  dart::dynamics::SkeletonPtr m3DOF;
   Eigen::Matrix<double, 2, 1> mForces;
 
   // MPC DDP states
@@ -605,7 +607,8 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
       break;
 
     case 'd':
-      cout << (mController->mRobot->getPositions().transpose()) << endl;
+      std::cout << (mController->mRobot->getPositions().transpose())
+                << std::endl;
       break;
 
     case 'e':
@@ -631,8 +634,8 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
           (mLeftTargetPosition[2] + mRightTargetPosition[2]) / 2;
       mRightTargetPosition[2] = mLeftTargetPosition[2];
 
-      cout << "left Ref: " << mLeftTargetPosition << endl;
-      cout << "right Ref: " << mRightTargetPosition << endl;
+      std::cout << "left Ref: " << mLeftTargetPosition << std::endl;
+      std::cout << "right Ref: " << mRightTargetPosition << std::endl;
       break;
 
     default:
@@ -648,7 +651,8 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
 }
 
 //==============================================================================
-SkeletonPtr MyWindow::create3DOF_URDF(SkeletonPtr krang, const char* urdfpath) {
+dart::dynamics::SkeletonPtr MyWindow::create3DOF_URDF(
+    dart::dynamics::SkeletonPtr krang, const char* urdfpath) {
   char fullpath[1024];
 
   // copy path to local variable
@@ -656,7 +660,7 @@ SkeletonPtr MyWindow::create3DOF_URDF(SkeletonPtr krang, const char* urdfpath) {
 
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
-  SkeletonPtr threeDOF =
+  dart::dynamics::SkeletonPtr threeDOF =
       loader.parseSkeleton(strcat(fullpath, "/3DOF-WIP/3dof.urdf"));
   threeDOF->setName("m3DOF");
 
@@ -677,7 +681,8 @@ Eigen::Vector3d MyWindow::getBodyCOM(dart::dynamics::SkeletonPtr robot) {
 }
 
 //==============================================================================
-void MyWindow::getSimple(SkeletonPtr& threeDOF, SkeletonPtr& krang) {
+void MyWindow::getSimple(dart::dynamics::SkeletonPtr& threeDOF,
+                         dart::dynamics::SkeletonPtr& krang) {
   // Load the full body with fixed wheel and set the pose q
   // dart::utils::DartLoader loader;
   // SkeletonPtr krangFixedWheel =
@@ -741,11 +746,13 @@ void MyWindow::getSimple(SkeletonPtr& threeDOF, SkeletonPtr& krang) {
   threeDOF->getBodyNode("Base")->setMass(mBody);
 
   // Print them out
-  // cout << "mass: " << mBody << endl;
-  // cout << "COM: " << bodyCOM(0) << ", " << bodyCOM(1) << ", " << bodyCOM(2)
-  // << endl; cout << "ixx: " << iBody(0,0) << ", iyy: " << iBody(1,1) << ",
-  // izz: " << iBody(2,2) << endl; cout << "ixy: " << iBody(0,1) << ", ixz: "
-  // << iBody(0,2) << ", iyz: " << iBody(1,2) << endl;
+  // std::cout << "mass: " << mBody << std::endl;
+  // std::cout << "COM: " << bodyCOM(0) << ", " << bodyCOM(1) << ", " <<
+  // bodyCOM(2)
+  // << std::endl; std::cout << "ixx: " << iBody(0,0) << ", iyy: " << iBody(1,1)
+  // << ", izz: " << iBody(2,2) << std::endl; std::cout << "ixy: " << iBody(0,1)
+  // << ", ixz: "
+  // << iBody(0,2) << ", iyz: " << iBody(1,2) << std::endl;
 
   // Update 3DOF state
   // get positions
@@ -863,7 +870,7 @@ void MyWindow::computeDDPTrajectory() {
   // Initial state
   State x0 = getCurrentState();
   x0 << 0, 0, x0(2), 0, 0, 0, 0, 0;
-  cout << "initState: " << x0.transpose() << endl;
+  std::cout << "initState: " << x0.transpose() << std::endl;
   // Dynamics::State xf; xf << 2, 0, 0, 0, 0, 0, 0.01, 5;
   // Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
   Dynamics::ControlTrajectory u =
@@ -904,7 +911,8 @@ void MyWindow::timeStepping() {
 
   // Camera View Update (should move with the base frame)
   if (mContinuousZoom) {
-    mZoom = min(0.25, max(0.11, 0.25 + ((0.25 - 0.11) / (0 - 3200)) * mSteps));
+    mZoom = std::min(
+        0.25, std::max(0.11, 0.25 + ((0.25 - 0.11) / (0 - 3200)) * mSteps));
     glutPostRedisplay();
   } else {
     if (mSteps == 800) {
@@ -923,19 +931,20 @@ void MyWindow::timeStepping() {
   }
 
   // if((mSteps-1)%10 == 1) {
-  //   cout << "mTrans: " << mTrans.transpose() << endl;
-  //   cout << "mEye: " << mEye.transpose() << endl;
-  //   cout << "mUp: " << mUp.transpose() << endl;
-  //   cout << "mZoom: " << mZoom << endl;
-  //   cout << "mPersp: " << mPersp << endl;
-  //   cout << "mRotate: " << mRotate << endl;
-  //   cout << "mTranslate: " << mTranslate << endl;
-  //   cout << "mZooming: " << mZooming << endl;
-  //   cout << "Trackball Center: " << mTrackBall.getCenter().transpose() <<
-  //   endl; cout << "Trackball Quaternion: " << endl <<
-  //   mTrackBall.getCurrQuat().toRotationMatrix() << endl; cout << "Trackball
-  //   Radius: " << mTrackBall.getRadius() << endl; cout << "Trackball
-  //   Rotation Matrix: " << endl << mTrackBall.getRotationMatrix() << endl;
+  //   std::cout << "mTrans: " << mTrans.transpose() << std::endl;
+  //   std::cout << "mEye: " << mEye.transpose() << std::endl;
+  //   std::cout << "mUp: " << mUp.transpose() << std::endl;
+  //   std::cout << "mZoom: " << mZoom << std::endl;
+  //   std::cout << "mPersp: " << mPersp << std::endl;
+  //   std::cout << "mRotate: " << mRotate << std::endl;
+  //   std::cout << "mTranslate: " << mTranslate << std::endl;
+  //   std::cout << "mZooming: " << mZooming << std::endl;
+  //   std::cout << "Trackball Center: " << mTrackBall.getCenter().transpose()
+  //   << std::endl; std::cout << "Trackball Quaternion: " << std::endl <<
+  //   mTrackBall.getCurrQuat().toRotationMatrix() << std::endl; std::cout <<
+  //   "Trackball Radius: " << mTrackBall.getRadius() << std::endl; std::cout <<
+  //   "Trackball Rotation Matrix: " << std::endl <<
+  //   mTrackBall.getRotationMatrix() << std::endl;
   // }
 
   getSimple(m3DOF, mkrang);
@@ -1033,15 +1042,15 @@ void MyWindow::timeStepping() {
       tau_L = -0.5 * (tau_1 + tau_0);
       tau_R = -0.5 * (tau_1 - tau_0);
       if (abs(tau_L) > mTauLim(0) / 2 | abs(tau_R) > mTauLim(0) / 2) {
-        cout << "step: " << mSteps << ", tau_0: " << tau_0
-             << ", tau_1: " << tau_1 << ", tau_L: " << tau_L
-             << ", tau_R: " << tau_R << endl;
+        std::cout << "step: " << mSteps << ", tau_0: " << tau_0
+                  << ", tau_1: " << tau_1 << ", tau_L: " << tau_L
+                  << ", tau_R: " << tau_R << std::endl;
       }
-      tau_L = min(mTauLim(0) / 2, max(-mTauLim(0) / 2, tau_L));
-      tau_R = min(mTauLim(0) / 2, max(-mTauLim(0) / 2, tau_R));
+      tau_L = std::min(mTauLim(0) / 2, std::max(-mTauLim(0) / 2, tau_L));
+      tau_R = std::min(mTauLim(0) / 2, std::max(-mTauLim(0) / 2, tau_R));
       mForces(0) = tau_L;
       mForces(1) = tau_R;
-      const vector<size_t> index{6, 7};
+      const std::vector<size_t> index{6, 7};
       mkrang->setForces(index, mForces);
     }
   }
@@ -1060,7 +1069,8 @@ void MyWindow::render() {
   }
 
   if (mContinuousZoom) {
-    mZoom = min(0.25, max(0.11, 0.25 + ((0.25 - 0.11) / (0 - 3200)) * steps));
+    mZoom = std::min(
+        0.25, std::max(0.11, 0.25 + ((0.25 - 0.11) / (0 - 3200)) * steps));
     glutPostRedisplay();
   } else {
     if (steps < 800) {
@@ -1132,22 +1142,24 @@ bool MyWindow::screenshot() {
 }
 
 //==============================================================================
-SkeletonPtr createFloor() {
-  SkeletonPtr floor = Skeleton::create("floor");
+dart::dynamics::SkeletonPtr createFloor() {
+  dart::dynamics::SkeletonPtr floor = dart::dynamics::Skeleton::create("floor");
 
   // Give the floor a body
-  BodyNodePtr body =
-      floor->createJointAndBodyNodePair<WeldJoint>(nullptr).second;
+  dart::dynamics::BodyNodePtr body =
+      floor->createJointAndBodyNodePair<dart::dynamics::WeldJoint>(nullptr)
+          .second;
   //  body->setFrictionCoeff(1e16);
 
   // Give the body a shape
   double floor_width = 50;
   double floor_height = 0.05;
-  std::shared_ptr<BoxShape> box(
-      new BoxShape(Eigen::Vector3d(floor_width, floor_width, floor_height)));
+  std::shared_ptr<dart::dynamics::BoxShape> box(new dart::dynamics::BoxShape(
+      Eigen::Vector3d(floor_width, floor_width, floor_height)));
   auto shapeNode =
-      body->createShapeNodeWith<VisualAspect, CollisionAspect, DynamicsAspect>(
-          box);
+      body->createShapeNodeWith<dart::dynamics::VisualAspect,
+                                dart::dynamics::CollisionAspect,
+                                dart::dynamics::DynamicsAspect>(box);
   shapeNode->getVisualAspect()->setColor(dart::Color::Blue());
 
   // Put the body into position
@@ -1162,7 +1174,7 @@ SkeletonPtr createFloor() {
 dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr krang;
-  ifstream file;
+  std::ifstream file;
   char line[1024];
   std::istringstream stream;
   Eigen::Matrix<double, 24, 1>
@@ -1188,7 +1200,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   krang->setName("krang");
 
   // Read initial pose from the file
-  file = ifstream("../../../examples/3dofddp/defaultInit.txt");
+  file = std::ifstream("../../../examples/3dofddp/defaultInit.txt");
   assert(file.is_open());
   file.getline(line, 1024);
   stream = std::istringstream(line);
@@ -1316,7 +1328,7 @@ int main(int argc, char* argv[]) {
   // To load tray and cup or not
   bool loadTray, loadCup;
   double trayCupFriction;
-  Configuration* cfg = Configuration::create();
+  config4cpp::Configuration* cfg = config4cpp::Configuration::create();
   const char* scope = "";
   const char* configFile = "../../../examples/3dofddp/controlParams.cfg";
   const char* urdfpath;
@@ -1326,45 +1338,47 @@ int main(int argc, char* argv[]) {
     loadCup = cfg->lookupBoolean(scope, "cup");
     trayCupFriction = cfg->lookupFloat(scope, "trayCupFriction");
     urdfpath = cfg->lookupString(scope, "urdfpath");
-  } catch (const ConfigurationException& ex) {
-    cerr << ex.c_str() << endl;
+  } catch (const config4cpp::ConfigurationException& ex) {
+    std::cerr << ex.c_str() << std::endl;
     cfg->destroy();
   }
-  cout << "loadTray: " << (loadTray ? "true" : "false") << endl;
-  cout << "loadCup: " << (loadCup ? "true" : "false") << endl;
-  cout << "trayCupFriction: " << trayCupFriction << endl;
-  cout << "urdfpath: " << urdfpath << endl;
+  std::cout << "loadTray: " << (loadTray ? "true" : "false") << std::endl;
+  std::cout << "loadCup: " << (loadCup ? "true" : "false") << std::endl;
+  std::cout << "trayCupFriction: " << trayCupFriction << std::endl;
+  std::cout << "urdfpath: " << urdfpath << std::endl;
 
   // Create world
-  WorldPtr world = std::make_shared<World>();
+  dart::simulation::WorldPtr world =
+      std::make_shared<dart::simulation::World>();
 
   // add floor and robot to the world pointer
   // Load Floor
-  SkeletonPtr floor = createFloor();
+  dart::dynamics::SkeletonPtr floor = createFloor();
   world->addSkeleton(floor);
 
   // Load robot
-  SkeletonPtr robot = createKrang(urdfpath);
+  dart::dynamics::SkeletonPtr robot = createKrang(urdfpath);
   world->addSkeleton(robot);
 
   // Load Tray
   if (loadTray) {
-    SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"), urdfpath);
+    dart::dynamics::SkeletonPtr tray =
+        createTray(robot->getBodyNode("lGripper"), urdfpath);
     world->addSkeleton(tray);
     tray->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
-    cout << "tray surface friction: "
-         << tray->getBodyNode(0)->getFrictionCoeff() << endl;
+    std::cout << "tray surface friction: "
+              << tray->getBodyNode(0)->getFrictionCoeff() << std::endl;
   }
 
   // Load Cup
   if (loadCup) {
-    SkeletonPtr cup =
+    dart::dynamics::SkeletonPtr cup =
         createCup(robot->getBodyNode("lGripper"),
                   urdfpath);  // cup->setPositions(tray->getPositions());
     world->addSkeleton(cup);
     cup->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
-    cout << "cup surface friction: " << cup->getBodyNode(0)->getFrictionCoeff()
-         << endl;
+    std::cout << "cup surface friction: "
+              << cup->getBodyNode(0)->getFrictionCoeff() << std::endl;
   }
 
   // Create window
