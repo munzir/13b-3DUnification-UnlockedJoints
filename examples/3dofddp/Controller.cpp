@@ -255,15 +255,21 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
   // cout << "mViscousFriction:" << mViscousFriction.transpose() << endl;
   
+  std::size_t index = 0;
+
+  // cout << mRobot->getJoint(4)->getName() << endl;
+
+  //Set torso friction
+  mRobot->getJoint(4)->setCoulombFriction(index,750);
+  mRobot->getJoint(4)->setDampingCoefficient(index,750);
+
   // Set left arm frictions
   for (int i = 6; i < 13; i++){
-    std::size_t index = 0;
     mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-6,i-6)/10);
     mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-6,i-6)/10);
   }
   // Set right arm frictions
   for (int i = 15; i < 22; i++){
-    std::size_t index = 0;
     mRobot->getJoint(i)->setCoulombFriction(index,mCoulombFriction(i-15,i-15)/10);
     mRobot->getJoint(i)->setDampingCoefficient(index,mViscousFriction(i-15,i-15)/10);
   }
