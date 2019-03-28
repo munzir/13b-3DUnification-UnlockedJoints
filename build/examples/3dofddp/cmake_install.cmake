@@ -1,4 +1,4 @@
-# Install script for directory: /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp
+# Install script for directory: /home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples/3dofddp
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

@@ -23,8 +23,8 @@ using namespace dart::simulation;
 using namespace dart::math;
 using namespace config4cpp;
 
-class MyWindow : public dart::gui::SimWindow {
-  using Scalar = double;  
+class MyWindow : public dart::gui::glut::SimWindow {
+  using Scalar = double;
   using Dynamics = Krang3D<Scalar>;
   using DDP_Opt = optimizer::DDP<Dynamics>;
   using Cost = Krang3DCost<Scalar>;
@@ -34,13 +34,13 @@ class MyWindow : public dart::gui::SimWindow {
   using State = typename Dynamics::State;
   using Control = typename Dynamics::Control;
 
-  public: 
+  public:
     MyWindow(const WorldPtr& world) {
 
       // *********************************** Tunable Parameters
       Configuration *  cfg = Configuration::create();
       const char *     scope = "";
-      const char *     configFile = "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+      const char *     configFile = "/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
       const char * str;
       std::istringstream stream;
       double newDouble;
@@ -48,50 +48,50 @@ class MyWindow : public dart::gui::SimWindow {
       try {
         cfg->parse(configFile);
 
-        mLockedJoints = cfg->lookupBoolean(scope, "lockedJoints"); 
+        mLockedJoints = cfg->lookupBoolean(scope, "lockedJoints");
 
         mInitCOMAngle = (cfg->lookupFloat(scope, "initCOMAngle"))*M_PI/180.0;
 
-        str = cfg->lookupString(scope, "goalState"); 
+        str = cfg->lookupString(scope, "goalState");
         stream.str(str); for(int i=0; i<8; i++) stream >> mGoalState(i); stream.clear();
 
         mFinalTime = cfg->lookupFloat(scope, "finalTime");
-        
+
         mDDPMaxIter = cfg->lookupInt(scope, "DDPMaxIter");
-        
-        str = cfg->lookupString(scope, "DDPStatePenalties"); 
+
+        str = cfg->lookupString(scope, "DDPStatePenalties");
         stream.str(str); for(int i=0; i<8; i++) stream >> mDDPStatePenalties(i); stream.clear();
-        
-        str = cfg->lookupString(scope, "DDPTerminalStatePenalties"); 
+
+        str = cfg->lookupString(scope, "DDPTerminalStatePenalties");
         stream.str(str); for(int i=0; i<8; i++) stream >> mDDPTerminalStatePenalties(i); stream.clear();
-        
-        str = cfg->lookupString(scope, "DDPControlPenalties"); 
+
+        str = cfg->lookupString(scope, "DDPControlPenalties");
         stream.str(str); for(int i=0; i<2; i++) stream >> mDDPControlPenalties(i); stream.clear();
-        
+
         mBeginStep = cfg->lookupInt(scope, "beginStep");
 
         mMPCMaxIter = cfg->lookupInt(scope, "MPCMaxIter");
-        
+
         mMPCHorizon = cfg->lookupInt(scope, "MPCHorizon");
-        
-        str = cfg->lookupString(scope, "MPCStatePenalties"); 
+
+        str = cfg->lookupString(scope, "MPCStatePenalties");
         stream.str(str); for(int i=0; i<8; i++) stream >> mMPCStatePenalties(i); stream.clear();
-        
-        str = cfg->lookupString(scope, "MPCTerminalStatePenalties"); 
+
+        str = cfg->lookupString(scope, "MPCTerminalStatePenalties");
         stream.str(str); for(int i=0; i<8; i++) stream >> mMPCTerminalStatePenalties(i); stream.clear();
-        
-        str = cfg->lookupString(scope, "MPCControlPenalties"); 
+
+        str = cfg->lookupString(scope, "MPCControlPenalties");
         stream.str(str); for(int i=0; i<2; i++) stream >> mMPCControlPenalties(i); stream.clear();
 
-        str = cfg->lookupString(scope, "tauLim"); 
+        str = cfg->lookupString(scope, "tauLim");
         stream.str(str); for(int i=0; i<18; i++) stream >> mTauLim(i); stream.clear();
 
-        mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom"); 
+        mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom");
 
-        mWaistLocked = cfg->lookupBoolean(scope, "waistLocked"); 
+        mWaistLocked = cfg->lookupBoolean(scope, "waistLocked");
 
-        mCOMControlInLowLevel = cfg->lookupBoolean(scope, "COMControlInLowLevel"); 
-        
+        mCOMControlInLowLevel = cfg->lookupBoolean(scope, "COMControlInLowLevel");
+
       } catch(const ConfigurationException & ex) {
           cerr << ex.c_str() << endl;
           cfg->destroy();
@@ -112,8 +112,8 @@ class MyWindow : public dart::gui::SimWindow {
       cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose() << endl;
       cout << "tauLim: " << mTauLim.transpose() << endl;
       cout << "continuousZoom: " << (mContinuousZoom?"true":"false") << endl;
-      cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl; 
-      cout << "COMControlInLowLevel: " << (mCOMControlInLowLevel?"true":"false") << endl; 
+      cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl;
+      cout << "COMControlInLowLevel: " << (mCOMControlInLowLevel?"true":"false") << endl;
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
       mkrang = world->getSkeleton("krang");
@@ -143,22 +143,22 @@ class MyWindow : public dart::gui::SimWindow {
       m3DOF = create3DOF_URDF(mkrang);
       mWorld3dof = std::make_shared<World>();
       mWorld3dof->addSkeleton(m3DOF);
-      getSimple(m3DOF, mkrang); 
-      
+      getSimple(m3DOF, mkrang);
+
 
       mSteps = 0;
-      mMPCSteps = -1; 
+      mMPCSteps = -1;
       mMPCdt = 0.01;
       mdqFilt = new filter(8, 50);
       mR = 0.25;
       mL = 0.68;//*6;
       char mpctrajfile[] = "mpc_traj.csv";
       mMPCWriter.open_file(mpctrajfile);
-      
+
       computeDDPTrajectory();
-      
+
       mController = new Controller(mkrang, mkrang->getBodyNode("lGripper"), mkrang->getBodyNode("rGripper") ) ;
-      
+
       // Targets for the controller
       // baseTf = mController->mRobot->getBodyNode(0)->getTransform();
       // double psi =  atan2(baseTf(0,0), -baseTf(1,0));
@@ -220,7 +220,7 @@ class MyWindow : public dart::gui::SimWindow {
     // 3DOF robot
     WorldPtr mWorld3dof;
     SkeletonPtr m3DOF;
-    Eigen::Matrix<double, 2, 1> mForces;   
+    Eigen::Matrix<double, 2, 1> mForces;
 
     // MPC DDP states
     // double psi, dpsi, qBody1, dqBody1, dthL, dthR;
@@ -275,10 +275,10 @@ void MyWindow::drawWorld() const {
     mat =  Eigen::AngleAxisd(mLeftTargetRPY(0), Eigen::Vector3d::UnitX()) *
            Eigen::AngleAxisd(mLeftTargetRPY(1), Eigen::Vector3d::UnitY()) *
            Eigen::AngleAxisd(mLeftTargetRPY(2), Eigen::Vector3d::UnitZ());
-    Eigen::Vector3d localTranslation; 
+    Eigen::Vector3d localTranslation;
     double axisLength = 0.1;
     double axisWidth = 0.003;
-    
+
     localTranslation << axisLength/2, 0, 0;
     mRI->setPenColor(Eigen::Vector3d(0.8, 0.2, 0.2));
     mRI->pushMatrix();
@@ -316,7 +316,7 @@ void MyWindow::drawWorld() const {
     mat =  Eigen::AngleAxisd(mRightTargetRPY(0), Eigen::Vector3d::UnitX()) *
            Eigen::AngleAxisd(mRightTargetRPY(1), Eigen::Vector3d::UnitY()) *
            Eigen::AngleAxisd(mRightTargetRPY(2), Eigen::Vector3d::UnitZ());
-    
+
     localTranslation << axisLength/2, 0, 0;
     mRI->setPenColor(Eigen::Vector3d(0.8, 0.2, 0.2));
     mRI->pushMatrix();
@@ -354,13 +354,13 @@ void MyWindow::drawWorld() const {
     // Draw Left End-Effector Frame
     Eigen::Vector3d eeRPY = dart::math::matrixToEulerXYZ(mController->getEndEffector("left")->getTransform().rotation());
     Eigen::Vector3d eePosition = mController->getEndEffector("left")->getTransform().translation();
-    
+
     mat =  Eigen::AngleAxisd(eeRPY(0), Eigen::Vector3d::UnitX()) *
            Eigen::AngleAxisd(eeRPY(1), Eigen::Vector3d::UnitY()) *
            Eigen::AngleAxisd(eeRPY(2), Eigen::Vector3d::UnitZ());
     axisLength = 0.08;
     axisWidth = 0.006;
-    
+
     localTranslation << axisLength/2, 0, 0;
     mRI->setPenColor(Eigen::Vector3d(0.8, 0.2, 0.2));
     mRI->pushMatrix();
@@ -395,13 +395,13 @@ void MyWindow::drawWorld() const {
     // Draw Right End-Effector Frame
     eeRPY = dart::math::matrixToEulerXYZ(mController->getEndEffector("right")->getTransform().rotation());
     eePosition = mController->getEndEffector("right")->getTransform().translation();
-    
+
     mat =  Eigen::AngleAxisd(eeRPY(0), Eigen::Vector3d::UnitX()) *
            Eigen::AngleAxisd(eeRPY(1), Eigen::Vector3d::UnitY()) *
            Eigen::AngleAxisd(eeRPY(2), Eigen::Vector3d::UnitZ());
     axisLength = 0.08;
     axisWidth = 0.006;
-    
+
     localTranslation << axisLength/2, 0, 0;
     mRI->setPenColor(Eigen::Vector3d(0.8, 0.2, 0.2));
     mRI->pushMatrix();
@@ -439,7 +439,7 @@ void MyWindow::drawWorld() const {
     //   (mController->mRobot->getPositions()).segment(3,3) \
     //   + Tf0.matrix().block<3, 3>(0, 0)*mLeftTargetPosition);
     // mRI->drawEllipsoid(Eigen::Vector3d(0.05, 0.05, 0.05));
-    // mRI->popMatrix();    
+    // mRI->popMatrix();
 
     // mRI->setPenColor(Eigen::Vector3d(0.0, 0.4, 0.2));
     // mRI->pushMatrix();
@@ -447,14 +447,14 @@ void MyWindow::drawWorld() const {
     //   (mController->mRobot->getPositions()).segment(3,3) \
     //   + Tf0.matrix().block<3, 3>(0, 0)*mRightTargetPosition);
     // mRI->drawEllipsoid(Eigen::Vector3d(0.05, 0.05, 0.05));
-    // mRI->popMatrix();   
+    // mRI->popMatrix();
 
     // Draw COM
     mRI->setPenColor(Eigen::Vector3d(0.2, 0.2, 0.8));
     mRI->pushMatrix();
     mRI->translate(mWorld->getSkeleton("krang")->getCOM());
     mRI->drawEllipsoid(Eigen::Vector3d(0.05, 0.05, 0.05));
-    mRI->popMatrix();    
+    mRI->popMatrix();
 
     // Draw Scale along x-axis
     mRI->setPenColor(Eigen::Vector3d(0.9, 0.7, 0.7));
@@ -514,7 +514,7 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
     case 'x':
       mLeftTargetPosition[2] += incremental;
       break;
-    
+
     case '-':
       mRightTargetPosition[0] -= incremental;
       break;
@@ -533,7 +533,7 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
     case '/':
       mRightTargetPosition[2] += incremental;
       break;
-    
+
     case 'r':
       mLeftTargetRPY[0] -= incremental;
       break;
@@ -587,7 +587,7 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
       rot << -1, 0, 0,
               0, 0, 1,
               0, 1, 0;
-      mRightTargetRPY = dart::math::matrixToEulerXYZ(rot);      
+      mRightTargetRPY = dart::math::matrixToEulerXYZ(rot);
       break;
 
     case 'h':
@@ -603,7 +603,7 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
       cout << "left Ref: " << mLeftTargetPosition << endl;
       cout << "right Ref: " << mRightTargetPosition << endl;
       break;
-      
+
 
     default:
       // Default keyboard control
@@ -621,10 +621,10 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
 SkeletonPtr MyWindow::create3DOF_URDF(SkeletonPtr krang) {
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
-  SkeletonPtr threeDOF = 
-      loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/3DOF-WIP/3dof.urdf");
+  SkeletonPtr threeDOF =
+      loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/3DOF-WIP/3dof.urdf");
   threeDOF->setName("m3DOF");
-  
+
   threeDOF->getJoint(0)->setDampingCoefficient(0, 0.5);
   threeDOF->getJoint(1)->setDampingCoefficient(0, 0.5);
 
@@ -644,9 +644,9 @@ void MyWindow::getSimple(SkeletonPtr& threeDOF, SkeletonPtr& krang) {
   // dart::utils::DartLoader loader;
   // SkeletonPtr krangFixedWheel =
   //     loader.parseSkeleton("/home/krang/dart/09-URDF/KrangFixedWheels/krang_fixed_wheel.urdf");
-  
+
   // Body Mass
-  double mFull = krang->getMass(); 
+  double mFull = krang->getMass();
   double mLWheel = krang->getBodyNode("LWheel")->getMass();
   double mRWheel = krang->getBodyNode("RWheel")->getMass();
   double mBody = mFull - mLWheel - mRWheel;
@@ -660,7 +660,7 @@ void MyWindow::getSimple(SkeletonPtr& threeDOF, SkeletonPtr& krang) {
   double m;
   Eigen::Matrix3d iMat;
   Eigen::Matrix3d iBody = Eigen::Matrix3d::Zero();
-  double ixx, iyy, izz, ixy, ixz, iyz;  
+  double ixx, iyy, izz, ixy, ixz, iyz;
   Eigen::Matrix3d rot;
   Eigen::Vector3d t;
   Eigen::Matrix3d tMat;
@@ -726,7 +726,7 @@ Krang3D<double>::State MyWindow::getCurrentState() {
   Eigen::Matrix<double, 8, 1> q, dq_orig, dq;
   State currentState = Dynamics::State::Zero();
 
-  // Read Positions, Speeds, Transform speeds to world coordinates and filter the speeds      
+  // Read Positions, Speeds, Transform speeds to world coordinates and filter the speeds
   Tf = m3DOF->getBodyNode(0)->getTransform().matrix();
   psi =  atan2(Tf(0,0), -Tf(1,0));
   qBody1 = atan2(Tf(0,1)*cos(psi) + Tf(1,1)*sin(psi), Tf(2,1));
@@ -748,31 +748,31 @@ Krang3D<double>::State MyWindow::getCurrentState() {
   dthRFilt = mdqFilt->average(7) + dqBody1Filt;
 
   // State: x, psi, theta, dx, dpsi, dtheta, x0, y0
-  currentState << mR/2 * (thL + thR), psi, qBody1, dq(3) * cos(psi) + dq(4) * sin(psi), dpsi, dqBody1, q(3), q(4); 
+  currentState << mR/2 * (thL + thR), psi, qBody1, dq(3) * cos(psi) + dq(4) * sin(psi), dpsi, dqBody1, q(3), q(4);
   return currentState;
 }
 
 //====================================================================
 void MyWindow::computeDDPTrajectory() {
-  
-  param p; 
-  double ixx, iyy, izz, ixy, ixz, iyz; 
+
+  param p;
+  double ixx, iyy, izz, ixy, ixz, iyz;
   Eigen::Vector3d com;
-  Eigen::Matrix3d iMat;      
+  Eigen::Matrix3d iMat;
   Eigen::Matrix3d tMat;
-  
+
   dart::dynamics::Frame* baseFrame = m3DOF->getBodyNode("Base");
   p.R = mR; p.L = mL; p.g=9.800000e+00;
-  
-  p.mw = m3DOF->getBodyNode("LWheel")->getMass(); 
-  
+
+  p.mw = m3DOF->getBodyNode("LWheel")->getMass();
+
   m3DOF->getBodyNode("LWheel")->getMomentOfInertia(ixx, iyy, izz, ixy, ixz, iyz);
-  
+
   p.YYw = ixx; p.ZZw = izz; p.XXw = iyy; // Wheel frame of reference in ddp dynamic model is different from the one in DART
-  p.m_1 = m3DOF->getBodyNode("Base")->getMass(); 
+  p.m_1 = m3DOF->getBodyNode("Base")->getMass();
   com = m3DOF->getBodyNode("Base")->getCOM(baseFrame);
   p.MX_1 = p.m_1*com(0); p.MY_1 = p.m_1*com(1); p.MZ_1 = p.m_1*com(2);
-  
+
   m3DOF->getBodyNode("Base")->getMomentOfInertia(ixx, iyy, izz, ixy, ixz, iyz);
   Eigen::Vector3d s = -com; // Position vector from local COM to body COM expressed in base frame
   iMat << ixx, ixy, ixz, // Inertia tensor of the body around its CoM expressed in body frame
@@ -785,20 +785,20 @@ void MyWindow::computeDDPTrajectory() {
   p.XX_1 = iMat(0,0); p.YY_1 = iMat(1,1); p.ZZ_1 = iMat(2,2);
   p.XY_1 = iMat(0,1); p.YZ_1 = iMat(1,2); p.XZ_1 = iMat(0,2);
   p.fric_1 = m3DOF->getJoint(0)->getDampingCoefficient(0); // Assuming both joints have same friction coeff (Please make sure that is true)
-  
+
   CSV_writer<Scalar> writer;
   util::DefaultLogger logger;
   bool verbose = true;
   Scalar tf = mFinalTime;
   auto time_steps = util::time_steps(tf, mMPCdt);
   int max_iterations = mDDPMaxIter;
-  
+
 
   mDDPDynamics = new Dynamics(p);
-  
-  // Initial state 
+
+  // Initial state
   State x0 = getCurrentState();
-  x0 << 0, 0, x0(2), 0, 0, 0, 0, 0; 
+  x0 << 0, 0, x0(2), 0, 0, 0, 0, 0;
   cout << "initState: " << x0.transpose() << endl;
   // Dynamics::State xf; xf << 2, 0, 0, 0, 0, 0, 0.01, 5;
   // Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
@@ -826,7 +826,7 @@ void MyWindow::computeDDPTrajectory() {
   // Get initial trajectory from DDP
   OptimizerResult<Dynamics> DDP_traj = trej_ddp.run(x0, u, *mDDPDynamics, cp_cost, cp_terminal_cost);
 
-  
+
   mDDPStateTraj = DDP_traj.state_trajectory;
   mDDPControlTraj = DDP_traj.control_trajectory;
 
@@ -848,11 +848,11 @@ void MyWindow::timeStepping() {
     else if(mSteps == 2400) {mZoom = 0.145; glutPostRedisplay(); }
     else if(mSteps == 3200) {mZoom = 0.11; glutPostRedisplay(); }
   }
-  
-  
+
+
   // if((mSteps-1)%10 == 1) {
   //   cout << "mTrans: " << mTrans.transpose() << endl;
-  //   cout << "mEye: " << mEye.transpose() << endl; 
+  //   cout << "mEye: " << mEye.transpose() << endl;
   //   cout << "mUp: " << mUp.transpose() << endl;
   //   cout << "mZoom: " << mZoom << endl;
   //   cout << "mPersp: " << mPersp << endl;
@@ -864,31 +864,31 @@ void MyWindow::timeStepping() {
   //   cout << "Trackball Radius: " << mTrackBall.getRadius() << endl;
   //   cout << "Trackball Rotation Matrix: " << endl << mTrackBall.getRotationMatrix() << endl;
   // }
-  
+
 
   getSimple(m3DOF, mkrang);
-  State cur_state = getCurrentState(); 
+  State cur_state = getCurrentState();
 
   // MPC DDP RECEDING HORIZON CALCULATION
   int cur_mpc_steps = ((mSteps > mBeginStep) ? ((mSteps - mBeginStep) / 10) : -1);
 
   if (cur_mpc_steps > mMPCSteps) {
     mMPCSteps = cur_mpc_steps;
-    int max_iterations = mMPCMaxIter; 
-    bool verbose = true; 
+    int max_iterations = mMPCMaxIter;
+    bool verbose = true;
     util::DefaultLogger logger;
-    int mpc_horizon = mMPCHorizon; 
-    
+    int mpc_horizon = mMPCHorizon;
+
     Dynamics::State target_state;
     target_state = mDDPStateTraj.col(mMPCSteps + mpc_horizon);
     Dynamics::ControlTrajectory hor_control = Dynamics::ControlTrajectory::Zero(2, mpc_horizon);
     Dynamics::StateTrajectory hor_traj_states = mDDPStateTraj.block(0, mMPCSteps, 8, mpc_horizon);
-    
+
     DDP_Opt ddp_horizon (mMPCdt, mpc_horizon, max_iterations, &logger, verbose);
-    
+
     Cost::StateHessian Q_mpc, Qf_mpc;
     Cost::ControlHessian ctl_R;
-    
+
     ctl_R.setZero();
     ctl_R.diagonal() << mMPCControlPenalties;
     Q_mpc.setZero();
@@ -897,10 +897,10 @@ void MyWindow::timeStepping() {
     Qf_mpc.diagonal() << mMPCTerminalStatePenalties;
     Cost running_cost_horizon(target_state, Q_mpc, ctl_R);
     TerminalCost terminal_cost_horizon(target_state, Qf_mpc);
-    
+
     OptimizerResult<Dynamics> results_horizon;
     results_horizon.control_trajectory = hor_control;
-    
+
     results_horizon = ddp_horizon.run_horizon(cur_state, hor_control, hor_traj_states, *mDDPDynamics, running_cost_horizon, terminal_cost_horizon);
     mMPCControlRef = results_horizon.control_trajectory.col(0);
     mMPCStateRef = results_horizon.state_trajectory.col(1);
@@ -909,7 +909,7 @@ void MyWindow::timeStepping() {
 
     mMPCWriter.save_step(cur_state, mMPCControlRef);
 
-    
+
   }
 
   if(mMPCSteps > -1) {
@@ -925,27 +925,27 @@ void MyWindow::timeStepping() {
     }
 
     if(mLockedJoints | !mCOMControlInLowLevel) {
-      double ddth, tau_0, ddx, ddpsi, tau_1, tau_L, tau_R; 
-      State xdot; 
-      Eigen::Vector3d ddq, dq; 
+      double ddth, tau_0, ddx, ddpsi, tau_1, tau_L, tau_R;
+      State xdot;
+      Eigen::Vector3d ddq, dq;
       c_forces dy_forces;
-      
+
       // Control input from High-level Control
       ddth = mMPCControlRef(0);
       tau_0 = mMPCControlRef(1);
-      
+
       // ddq
       xdot = mDDPDynamics->f(cur_state, mMPCControlRef);
       ddx = xdot(3);
       ddpsi = xdot(4);
       ddq << ddx, ddpsi, ddth;
-      
+
       // dq
       dq = cur_state.segment(3,3);
-      
+
       // A, C, Q and Gamma_fric
       dy_forces = mDDPDynamics->dynamic_forces(cur_state, mMPCControlRef);
-      
+
       // tau_1
       // tau_1 = (dy_forces.A.block<1,3>(2,0)*ddq) + (dy_forces.C.block<1,3>(2,0)*dq) + (dy_forces.Q(2)) - (dy_forces.Gamma_fric(2));
       tau_1 = dy_forces.A.block<1,3>(2,0)*ddq; tau_1 += dy_forces.C.block<1,3>(2,0)*dq; tau_1 += dy_forces.Q(2); tau_1 -= dy_forces.Gamma_fric(2);
@@ -974,7 +974,7 @@ void MyWindow::render() {
   int steps;
   if(mPlayFrame) { steps = mPlayFrame; }
   else { steps = mWorld->getTime()*1000; }
-  
+
   if(mContinuousZoom){
     mZoom = min(0.25, max(0.11, 0.25+((0.25-0.11)/(0-3200))*steps));
     glutPostRedisplay();
@@ -1066,15 +1066,15 @@ SkeletonPtr createFloor() {
 
 //====================================================================
 dart::dynamics::SkeletonPtr createKrang() {
-  
+
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr krang;
   // ifstream file;
   // char line [1024];
   // std::istringstream stream;
   Eigen::Matrix<double, 24, 1> initPoseParams;
-  initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0,    0.0,    -4.2976,   0.053232, -0.0575697,  
-       -1.36631,  -0.495357,   0.969689,   -1.55801,  -0.421576,   -1.27307,   -1.35663,    
+  initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0,    0.0,    -4.2976,   0.053232, -0.0575697,
+       -1.36631,  -0.495357,   0.969689,   -1.55801,  -0.421576,   -1.27307,   -1.35663,
        1.2217,   0.606397,   -0.91889,    1.50091,   0.516969,    1.31059,    1.26479; // heading, qBase, x, y, z, qLWheel, qRWheel, qWaist, qTorso, qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
   size_t i;
   double newDouble, headingInit, qBaseInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, th;
@@ -1086,7 +1086,7 @@ dart::dynamics::SkeletonPtr createKrang() {
   Eigen::Matrix<double, 25, 1> q;
 
   // Load the Skeleton from a file
-  krang = loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/Krang/KrangOld.urdf");
+  krang = loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/Krang/KrangOld.urdf");
   krang->setName("krang");
 
   // Read initial pose from the file
@@ -1107,25 +1107,25 @@ dart::dynamics::SkeletonPtr createKrang() {
   qKinectInit = initPoseParams(9);
   qLeftArmInit << initPoseParams.segment(10, 7);
   qRightArmInit << initPoseParams.segment(17, 7);
-  
-  // Calculating the axis angle representation of orientation from headingInit and qBaseInit: 
+
+  // Calculating the axis angle representation of orientation from headingInit and qBaseInit:
   // RotX(pi/2)*RotY(-pi/2+headingInit)*RotX(-qBaseInit)
   baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
   baseTf.prerotate(Eigen::AngleAxisd(-qBaseInit,Eigen::Vector3d::UnitX())).prerotate(Eigen::AngleAxisd(-M_PI/2+headingInit,Eigen::Vector3d::UnitY())).prerotate(Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitX()));
   aa = Eigen::AngleAxisd(baseTf.rotation());
-  
+
   // Set the positions and get the resulting COM angle
-  q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit; 
+  q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit;
   krang->setPositions(q);
   COM = krang->getCOM() - xyzInit;
   th = atan2(COM(0), COM(2));
-  
-  // Adjust qBaseInit to bring COM on top of wheels and set the positions again 
+
+  // Adjust qBaseInit to bring COM on top of wheels and set the positions again
   qBaseInit -= th;
   baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
   baseTf.prerotate(Eigen::AngleAxisd(-qBaseInit,Eigen::Vector3d::UnitX())).prerotate(Eigen::AngleAxisd(-M_PI/2+headingInit,Eigen::Vector3d::UnitY())).prerotate(Eigen::AngleAxisd(M_PI/2, Eigen::Vector3d::UnitX()));
   aa = Eigen::AngleAxisd(baseTf.rotation());
-  q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit; 
+  q << aa.angle()*aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit, qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit;
   krang->setPositions(q);
 
   krang->getJoint(0)->setDampingCoefficient(0, 0.5);
@@ -1140,11 +1140,11 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee) {
   Eigen::Matrix3d EELRot, trayLocalRot, trayRot;
   Eigen::Vector3d EELPos, trayLocalTranslation, trayPos;
   Eigen::Matrix<double, 6, 1> qObject;
-  
+
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr tray =
-      loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/scenes/tray.urdf");
+      loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/scenes/tray.urdf");
   tray->setName("tray");
 
   // Orientation
@@ -1154,7 +1154,7 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee) {
                   0, -1, 0;
   trayRot = EELRot*trayLocalRot;
   Eigen::AngleAxisd aa(trayRot);
-  
+
   // Position
   EELPos = ee->getTransform().translation();
   trayLocalTranslation << 0, -0.286303, 0.04;
@@ -1169,15 +1169,15 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee) {
 
 //====================================================================
 dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
-  
+
   Eigen::Matrix3d EELRot, cupLocalRot, cupRot;
   Eigen::Vector3d EELPos, cupLocalTranslation, cupPos;
   Eigen::Matrix<double, 6, 1> qObject;
-  
+
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr cup =
-      loader.parseSkeleton("/home/munzir/Documents/Software/09-URDF/scenes/cup.urdf");
+      loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/scenes/cup.urdf");
   cup->setName("cup");
 
   // Orientation
@@ -1187,7 +1187,7 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
                  0, -1, 0;
   cupRot = EELRot*cupLocalRot;
   Eigen::AngleAxisd aa(cupRot);
-  
+
   // Position
   EELPos = ee->getTransform().translation();
   cupLocalTranslation << 0, -0.286303, 0.04;
@@ -1203,7 +1203,7 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
 //====================================================================
 int main(int argc, char* argv[]) {
 
-  
+
   // Create world
   WorldPtr world = std::make_shared<World>();
 
@@ -1214,16 +1214,16 @@ int main(int argc, char* argv[]) {
   // Load robot
   SkeletonPtr robot = createKrang();
   world->addSkeleton(robot);
-  
+
   // To load tray and cup or not
   bool loadTray, loadCup; double trayCupFriction;
   Configuration *  cfg = Configuration::create();
   const char *     scope = "";
-  const char *     configFile = "/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+  const char *     configFile = "/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
   try {
     cfg->parse(configFile);
-    loadTray = cfg->lookupBoolean(scope, "tray"); 
-    loadCup = cfg->lookupBoolean(scope, "cup"); 
+    loadTray = cfg->lookupBoolean(scope, "tray");
+    loadCup = cfg->lookupBoolean(scope, "cup");
     trayCupFriction = cfg->lookupFloat(scope, "trayCupFriction");
   } catch(const ConfigurationException & ex) {
       cerr << ex.c_str() << endl;
@@ -1232,7 +1232,7 @@ int main(int argc, char* argv[]) {
   cout << "loadTray: " << (loadTray?"true":"false") << endl;
   cout << "loadCup: " << (loadCup?"true":"false") << endl;
   cout << "trayCupFriction: " << trayCupFriction << endl;
-  
+
   // Load Tray
   if(loadTray) {
     SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"));
@@ -1240,15 +1240,15 @@ int main(int argc, char* argv[]) {
     tray->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
     cout << "tray surface friction: " << tray->getBodyNode(0)->getFrictionCoeff() << endl;
   }
-  
+
   // Load Cup
-  if(loadCup) { 
+  if(loadCup) {
     SkeletonPtr cup = createCup(robot->getBodyNode("lGripper")); //cup->setPositions(tray->getPositions());
     world->addSkeleton(cup);
     cup->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
     cout << "cup surface friction: " << cup->getBodyNode(0)->getFrictionCoeff() << endl;
   }
-  
+
   // Create window
   MyWindow window(world);
 
