@@ -1,4 +1,4 @@
-# Install script for directory: /home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/examples
+# Install script for directory: /home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,7 +39,7 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("/home/munzir/Documents/Software/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/cmake_install.cmake")
+  include("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/build/examples/3dofddp/cmake_install.cmake")
 
 endif()
 
