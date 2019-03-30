@@ -42,10 +42,8 @@
  */
 
 #include "Controller.hpp"
-using namespace dart;
-using namespace std;
-using namespace config4cpp;
-//==========================================================================
+
+//==============================================================================
 Controller::Controller(dart::dynamics::SkeletonPtr _robot,
                        dart::dynamics::BodyNode* _LeftendEffector,
                        dart::dynamics::BodyNode* _RightendEffector)
@@ -104,7 +102,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mR = 0.25, mL = 0.68;
 
   // *********************************** Tunable Parameters
-  Configuration* cfg = Configuration::create();
+  config4cpp::Configuration* cfg = config4cpp::Configuration::create();
   const char* scope = "";
   const char* configFile = "../../../examples/3dofddp/controlParams.cfg";
   const char* str;
@@ -214,7 +212,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     mCOMControlInLowLevel = cfg->lookupBoolean(scope, "COMControlInLowLevel");
     if (!mCOMControlInLowLevel) mWBal.setZero();
 
-  } catch (const ConfigurationException& ex) {
+  } catch (const config4cpp::ConfigurationException& ex) {
     cerr << ex.c_str() << endl;
     cfg->destroy();
   }
@@ -328,15 +326,16 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mTauLim << tauLim(0), tauLim.tail(mOptDim - 1);
 }
 
-//=========================================================================
+//==============================================================================
 Controller::~Controller() {}
-//=========================================================================
+
+//==============================================================================
 struct OptParams {
   Eigen::MatrixXd P;
   Eigen::VectorXd b;
 };
 
-//=========================================================================
+//==============================================================================
 void printMatrix(Eigen::MatrixXd A) {
   for (int i = 0; i < A.rows(); i++) {
     for (int j = 0; j < A.cols(); j++) {
@@ -346,7 +345,8 @@ void printMatrix(Eigen::MatrixXd A) {
   }
   std::cout << std::endl;
 }
-//========================================================================
+
+//==============================================================================
 void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
                     double* grad, void* f_data) {
   OptParams* constParams = reinterpret_cast<OptParams*>(f_data);
@@ -373,7 +373,7 @@ void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
   // std::cout << "done calculating the result"
 }
 
-//========================================================================
+//==============================================================================
 double optFunc(const std::vector<double>& x, std::vector<double>& grad,
                void* my_func_data) {
   OptParams* optParams = reinterpret_cast<OptParams*>(my_func_data);
@@ -395,6 +395,7 @@ double optFunc(const std::vector<double>& x, std::vector<double>& grad,
   return (0.5 * pow((optParams->P * X - optParams->b).norm(), 2));
 }
 
+//==============================================================================
 void Controller::updatePositions() {
   mBaseTf = mRobot->getBodyNode(0)->getTransform().matrix();
   mq = mRobot->getPositions();
@@ -409,6 +410,7 @@ void Controller::updatePositions() {
   mRot0 << cos(mpsi), sin(mpsi), 0, -sin(mpsi), cos(mpsi), 0, 0, 0, 1;
 }
 
+//==============================================================================
 void Controller::updateSpeeds() {
   mdqFilt->AddSample(mRobot->getVelocities());
   mdq = mdqFilt->average;
@@ -427,6 +429,7 @@ void Controller::updateSpeeds() {
       (-sin(mpsi) * mdpsi), 0, 0, 0, 0;
 }
 
+//==============================================================================
 void Controller::updateTransformJacobian() {
   // ********************************* Transform Jacobian
   // Coordinate Transformation to minimum set of coordinates
@@ -467,6 +470,7 @@ void Controller::updateTransformJacobian() {
   }
 }
 
+//==============================================================================
 void Controller::setLeftArmOptParams(
     const Eigen::Vector3d& _LeftTargetPosition) {
   static Eigen::Vector3d xEELref, xEEL, dxEEL, ddxEELref, dxref;
@@ -476,8 +480,8 @@ void Controller::setLeftArmOptParams(
 
   xEELref = _LeftTargetPosition;
   if (mSteps == 1) {
-    cout << "xEELref: " << xEELref(0) << ", " << xEELref(1) << ", "
-         << xEELref(2) << endl;
+    std::cout << "xEELref: " << xEELref(0) << ", " << xEELref(1) << ", "
+              << xEELref(2) << std::endl;
   }
 
   // x, dx, ddxref
@@ -516,6 +520,7 @@ void Controller::setLeftArmOptParams(
   }
 }
 
+//==============================================================================
 void Controller::setRightArmOptParams(
     const Eigen::Vector3d& _RightTargetPosition) {
   static Eigen::Vector3d xEERref, xEER, dxEER, ddxEERref, dxref;
@@ -525,8 +530,8 @@ void Controller::setRightArmOptParams(
 
   xEERref = _RightTargetPosition;
   if (mSteps == 1) {
-    cout << "xEErefR: " << xEERref(0) << ", " << xEERref(1) << ", "
-         << xEERref(2) << endl;
+    std::cout << "xEErefR: " << xEERref(0) << ", " << xEERref(1) << ", "
+         << xEERref(2) << std::endl;
   }
 
   // x, dx, ddxref
@@ -565,6 +570,7 @@ void Controller::setRightArmOptParams(
   }
 }
 
+//==============================================================================
 void Controller::setLeftOrientationOptParams(
     const Eigen::Vector3d& _LeftTargetRPY) {
   static Eigen::Quaterniond quatRef, quat;
@@ -640,6 +646,7 @@ void Controller::setLeftOrientationOptParams(
   }
 }
 
+//==============================================================================
 void Controller::setRightOrientationOptParams(
     const Eigen::Vector3d& _RightTargetRPY) {
   static Eigen::Quaterniond quatRef, quat;
@@ -715,6 +722,7 @@ void Controller::setRightOrientationOptParams(
   }
 }
 
+//==============================================================================
 void Controller::setBalanceOptParams(double thref, double dthref,
                                      double ddthref) {
   static Eigen::Vector3d COM, dCOM, COMref, dCOMref, ddCOMref, ddCOMStar,
@@ -807,6 +815,7 @@ void Controller::setBalanceOptParams(double thref, double dthref,
   }
 }
 
+//==============================================================================
 void Controller::computeDynamics() {
   static Eigen::Matrix<double, 25, 25> M_full;
   static Eigen::Matrix<double, 20, 20> M;
@@ -841,47 +850,47 @@ void Controller::computeDynamics() {
       MM.bottomRightCorner(mOptDim - 1, mOptDim - 1);
   mhh << hh(0), hh.tail(mOptDim - 1);
   if (mSteps < 0) {
-    cout << "axx: " << axx << endl;
-    cout << "axq: ";
+    std::cout << "axx: " << axx << std::endl;
+    std::cout << "axq: ";
     for (int i = 0; i < axq.rows(); i++)
-      for (int j = 0; j < axq.cols(); j++) cout << axq(i, j) << ", ";
-    cout << endl;
-    cout << "Aqq: ";
+      for (int j = 0; j < axq.cols(); j++) std::cout << axq(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "Aqq: ";
     for (int i = 0; i < Aqq.rows(); i++)
-      for (int j = 0; j < Aqq.cols(); j++) cout << Aqq(i, j) << ", ";
-    cout << endl;
-    cout << "alpha: " << alpha << endl;
-    cout << "beta: " << beta << endl;
-    cout << "A_qq: ";
+      for (int j = 0; j < Aqq.cols(); j++) std::cout << Aqq(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "alpha: " << alpha << std::endl;
+    std::cout << "beta: " << beta << std::endl;
+    std::cout << "A_qq: ";
     for (int i = 0; i < A_qq.rows(); i++)
-      for (int j = 0; j < A_qq.cols(); j++) cout << A_qq(i, j) << ", ";
-    cout << endl;
-    cout << "B: ";
+      for (int j = 0; j < A_qq.cols(); j++) std::cout << A_qq(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "B: ";
     for (int i = 0; i < B.rows(); i++)
-      for (int j = 0; j < B.cols(); j++) cout << B(i, j) << ", ";
-    cout << endl;
-    cout << "pre: ";
+      for (int j = 0; j < B.cols(); j++) std::cout << B(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "pre: ";
     for (int i = 0; i < pre.rows(); i++)
-      for (int j = 0; j < pre.cols(); j++) cout << pre(i, j) << ", ";
-    cout << endl;
-    cout << "PP: ";
+      for (int j = 0; j < pre.cols(); j++) std::cout << pre(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "PP: ";
     for (int i = 0; i < PP.rows(); i++)
-      for (int j = 0; j < PP.cols(); j++) cout << PP(i, j) << ", ";
-    cout << endl;
-    cout << "MM: ";
+      for (int j = 0; j < PP.cols(); j++) std::cout << PP(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "MM: ";
     for (int i = 0; i < mMM.rows(); i++)
-      for (int j = 0; j < mMM.cols(); j++) cout << mMM(i, j) << ", ";
-    cout << endl;
-    cout << "hh: ";
+      for (int j = 0; j < mMM.cols(); j++) std::cout << mMM(i, j) << ", ";
+    std::cout << std::endl;
+    std::cout << "hh: ";
     for (int i = 0; i < mhh.rows(); i++)
-      for (int j = 0; j < mhh.cols(); j++) cout << mhh(i, j) << ", ";
-    cout << endl;
+      for (int j = 0; j < mhh.cols(); j++) std::cout << mhh(i, j) << ", ";
+    std::cout << std::endl;
   }
-  // cout << "Size of M = " << M.rows() << "*" << M.cols() << endl;
-  // cout << "Size of h = " << h.rows() << "*" << h.cols() << endl;
+  // std::cout << "Size of M = " << M.rows() << "*" << M.cols() << std::endl;
+  // std::cout << "Size of h = " << h.rows() << "*" << h.cols() << std::endl;
 }
 
-//=========================================================================
+//==============================================================================
 void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
                         const Eigen::Vector3d& _RightTargetPosition,
                         const Eigen::Vector3d& _LeftTargetRPY,
@@ -1103,11 +1112,11 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // if(mSteps%(maxTimeSet==1?30:30) == 0)
   if (false) {
-    cout << "mForces: " << mForces(0);
+    std::cout << "mForces: " << mForces(0);
     for (int i = 1; i < 19; i++) {
-      cout << ", " << mForces(i);
+      std::cout << ", " << mForces(i);
     }
-    cout << endl;
+    std::cout << std::endl;
 
     // Print the objective function components
     cout << "EEL loss: " << pow((mPEEL * mddqBodyRef - mbEEL).norm(), 2)
@@ -1142,5 +1151,5 @@ dart::dynamics::BodyNode* Controller::getEndEffector(
   }
 }
 
-//=========================================================================
+//==============================================================================
 void Controller::keyboard(unsigned char /*_key*/, int /*_x*/, int /*_y*/) {}
