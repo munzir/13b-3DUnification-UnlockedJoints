@@ -40,13 +40,17 @@ class MyWindow : public dart::gui::glut::SimWindow {
       // *********************************** Tunable Parameters
       Configuration *  cfg = Configuration::create();
       const char *     scope = "";
-      const char *     configFile = "/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+      const char *     configFile = "../../../examples/3dofddp/controlParams.cfg";
       const char * str;
+      const char * urdfpath;
       std::istringstream stream;
       double newDouble;
 
       try {
+
         cfg->parse(configFile);
+
+        urdfpath = cfg->lookupString(scope, "urdfpath");
 
         mLockedJoints = cfg->lookupBoolean(scope, "lockedJoints");
 
@@ -96,6 +100,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
           cerr << ex.c_str() << endl;
           cfg->destroy();
       }
+      cout << "urdfpath: " << urdfpath << endl;
       cout << "lockedJoints: " << (mLockedJoints? "true":"false") << endl;
       cout << "initCOMAngle: " << mInitCOMAngle << endl;
       cout << "goalState: " << mGoalState.transpose() << endl;
@@ -114,6 +119,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
       cout << "continuousZoom: " << (mContinuousZoom?"true":"false") << endl;
       cout << "waistLocked: " << (mWaistLocked?"true":"false") << endl;
       cout << "COMControlInLowLevel: " << (mCOMControlInLowLevel?"true":"false") << endl;
+
       // Attach the world passed in the input argument to the window, and fetch the robot from the world
       setWorld(world);
       mkrang = world->getSkeleton("krang");
@@ -140,7 +146,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
       mkrang->setPositions(q);
 
       // Initialize the simplified robot
-      m3DOF = create3DOF_URDF(mkrang);
+      m3DOF = create3DOF_URDF(mkrang, urdfpath);
       mWorld3dof = std::make_shared<World>();
       mWorld3dof->addSkeleton(m3DOF);
       getSimple(m3DOF, mkrang);
@@ -185,7 +191,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
     void keyboard(unsigned char _key, int _x, int _y) override;
 
-    SkeletonPtr create3DOF_URDF(SkeletonPtr krang);
+    SkeletonPtr create3DOF_URDF(SkeletonPtr krang, const char * urdfpath);
 
     Eigen::Vector3d getBodyCOM(dart::dynamics::SkeletonPtr robot);
 
@@ -618,11 +624,17 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
 }
 
 //====================================================================
-SkeletonPtr MyWindow::create3DOF_URDF(SkeletonPtr krang) {
+SkeletonPtr MyWindow::create3DOF_URDF(SkeletonPtr krang, const char * urdfpath) {
+
+  char fullpath[1024];
+
+  // copy path to local variable
+  strcpy(fullpath, urdfpath);
+
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   SkeletonPtr threeDOF =
-      loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/3DOF-WIP/3dof.urdf");
+      loader.parseSkeleton(strcat(fullpath, "/3DOF-WIP/3dof.urdf"));
   threeDOF->setName("m3DOF");
 
   threeDOF->getJoint(0)->setDampingCoefficient(0, 0.5);
@@ -964,6 +976,7 @@ void MyWindow::timeStepping() {
       mkrang->setForces(index, mForces);
     }
   }
+
   SimWindow::timeStepping();
 }
 
@@ -1065,7 +1078,7 @@ SkeletonPtr createFloor() {
 }
 
 //====================================================================
-dart::dynamics::SkeletonPtr createKrang() {
+dart::dynamics::SkeletonPtr createKrang(const char * urdfpath) {
 
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr krang;
@@ -1084,19 +1097,23 @@ dart::dynamics::SkeletonPtr createKrang() {
   Eigen::Transform<double, 3, Eigen::Affine> baseTf;
   Eigen::AngleAxisd aa;
   Eigen::Matrix<double, 25, 1> q;
+  char fullpath[1024];
+
+  // copy path to local variable
+  strcpy(fullpath, urdfpath);
 
   // Load the Skeleton from a file
-  krang = loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/Krang/KrangOld.urdf");
+  krang = loader.parseSkeleton(strcat(fullpath, "/Krang/KrangOld.urdf"));
   krang->setName("krang");
 
   // Read initial pose from the file
-  // file = ifstream("/home/panda/myfolder/wholebodycontrol/13b-3DUnification-UnlockedJoints/examples/3dofddp/defaultInit.txt");
-  // assert(file.is_open());
-  // file.getline(line, 1024);
-  // stream = std::istringstream(line);
-  // i = 0;
-  // while((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
-  // file.close();
+  file = ifstream("../../../examples/3dofddp/defaultInit.txt");
+  assert(file.is_open());
+  file.getline(line, 1024);
+  stream = std::istringstream(line);
+  i = 0;
+  while((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
+  file.close();
   headingInit = initPoseParams(0);
   qBaseInit = initPoseParams(1);
   xyzInit << initPoseParams.segment(2,3);
@@ -1135,16 +1152,20 @@ dart::dynamics::SkeletonPtr createKrang() {
 }
 
 //====================================================================
-dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee) {
+dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee, const char * urdfpath) {
 
   Eigen::Matrix3d EELRot, trayLocalRot, trayRot;
   Eigen::Vector3d EELPos, trayLocalTranslation, trayPos;
   Eigen::Matrix<double, 6, 1> qObject;
+  char fullpath[1024];
+
+  // copy path to local variable
+  strcpy(fullpath, urdfpath);
 
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr tray =
-      loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/scenes/tray.urdf");
+      loader.parseSkeleton(strcat(fullpath, "/scenes/tray.urdf"));
   tray->setName("tray");
 
   // Orientation
@@ -1168,16 +1189,20 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee) {
 }
 
 //====================================================================
-dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
+dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee, const char * urdfpath) {
 
   Eigen::Matrix3d EELRot, cupLocalRot, cupRot;
   Eigen::Vector3d EELPos, cupLocalTranslation, cupPos;
   Eigen::Matrix<double, 6, 1> qObject;
+  char fullpath[1024];
+
+  // copy path to local variable
+  strcpy(fullpath, urdfpath);
 
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr cup =
-      loader.parseSkeleton("/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/09-URDF/scenes/cup.urdf");
+      loader.parseSkeleton(strcat(fullpath, "/scenes/cup.urdf"));
   cup->setName("cup");
 
   // Orientation
@@ -1203,6 +1228,27 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee) {
 //====================================================================
 int main(int argc, char* argv[]) {
 
+  // To load tray and cup or not
+  bool loadTray, loadCup; double trayCupFriction;
+  Configuration *  cfg = Configuration::create();
+  const char *     scope = "";
+  const char *     configFile = "../../../examples/3dofddp/controlParams.cfg";
+  const char * urdfpath;
+  try {
+    cfg->parse(configFile);
+    loadTray = cfg->lookupBoolean(scope, "tray");
+    loadCup = cfg->lookupBoolean(scope, "cup");
+    trayCupFriction = cfg->lookupFloat(scope, "trayCupFriction");
+    urdfpath = cfg->lookupString(scope, "urdfpath");
+  } catch(const ConfigurationException & ex) {
+      cerr << ex.c_str() << endl;
+      cfg->destroy();
+  }
+  cout << "loadTray: " << (loadTray?"true":"false") << endl;
+  cout << "loadCup: " << (loadCup?"true":"false") << endl;
+  cout << "trayCupFriction: " << trayCupFriction << endl;
+  cout << "urdfpath: " << urdfpath << endl;
+
 
   // Create world
   WorldPtr world = std::make_shared<World>();
@@ -1212,30 +1258,12 @@ int main(int argc, char* argv[]) {
   world->addSkeleton(floor); //add ground and robot to the world pointer
 
   // Load robot
-  SkeletonPtr robot = createKrang();
+  SkeletonPtr robot = createKrang(urdfpath);
   world->addSkeleton(robot);
-
-  // To load tray and cup or not
-  bool loadTray, loadCup; double trayCupFriction;
-  Configuration *  cfg = Configuration::create();
-  const char *     scope = "";
-  const char *     configFile = "/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
-  try {
-    cfg->parse(configFile);
-    loadTray = cfg->lookupBoolean(scope, "tray");
-    loadCup = cfg->lookupBoolean(scope, "cup");
-    trayCupFriction = cfg->lookupFloat(scope, "trayCupFriction");
-  } catch(const ConfigurationException & ex) {
-      cerr << ex.c_str() << endl;
-      cfg->destroy();
-  }
-  cout << "loadTray: " << (loadTray?"true":"false") << endl;
-  cout << "loadCup: " << (loadCup?"true":"false") << endl;
-  cout << "trayCupFriction: " << trayCupFriction << endl;
 
   // Load Tray
   if(loadTray) {
-    SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"));
+    SkeletonPtr tray = createTray(robot->getBodyNode("lGripper"), urdfpath);
     world->addSkeleton(tray);
     tray->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
     cout << "tray surface friction: " << tray->getBodyNode(0)->getFrictionCoeff() << endl;
@@ -1243,7 +1271,7 @@ int main(int argc, char* argv[]) {
 
   // Load Cup
   if(loadCup) {
-    SkeletonPtr cup = createCup(robot->getBodyNode("lGripper")); //cup->setPositions(tray->getPositions());
+    SkeletonPtr cup = createCup(robot->getBodyNode("lGripper"), urdfpath); //cup->setPositions(tray->getPositions());
     world->addSkeleton(cup);
     cup->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
     cout << "cup surface friction: " << cup->getBodyNode(0)->getFrictionCoeff() << endl;

@@ -103,7 +103,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // *********************************** Tunable Parameters
   Configuration *  cfg = Configuration::create();
   const char *     scope = "";
-  const char *     configFile = "/home/munzir/Me/5-Work/01-PhD/01-WholeBodyControlAttempt1/13b-3DUnification-UnlockedJoints/examples/3dofddp/controlParams.cfg";
+  const char *     configFile = "../../../examples/3dofddp/controlParams.cfg";
   const char * str;
   std::istringstream stream;
   double newDouble;
@@ -385,6 +385,20 @@ void Controller::updateSpeeds(){
 }
 
 void Controller::updateTransformJacobian() {
+  // ********************************* Transform Jacobian
+  // Coordinate Transformation to minimum set of coordinates
+  // dq0 = -dq_1
+  // dq1 = dpsi*cos(q_1)
+  // dq2 = dpsi*sin(q_1)
+  // dq3 = 0
+  // dq4 = dx*sin(q_1)
+  // dq5 = -dx*cos(q_1)
+  // dq6 = dx/R - (L/(2*R))*dpsi - dq_1
+  // dq7 = dx/R + (L/(2*R))*dpsi - dq_1
+  // dq8 = dq_2
+  // dq9 = dq_3
+  // [dq0 dq1 dq2 dq3 dq4 dq5 dq6 dq7]' = J*[dx dpsi dq_1]';
+  // where
 
   mJtf.topLeftCorner(8, 3) <<        0,            0,        -1,
                                      0, cos(mqBody1),         0,
