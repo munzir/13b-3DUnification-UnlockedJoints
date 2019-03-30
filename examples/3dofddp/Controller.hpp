@@ -43,10 +43,6 @@
 
 #include "file_ops.hpp"
 
-// using namespace dart;
-// using namespace std;
-// using namespace config4cpp;
-
 class filter {
  public:
   filter(const int dim, const int n) {
