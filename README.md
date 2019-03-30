@@ -29,6 +29,9 @@
 - [09-URDF](https://github.gatech.edu/WholeBodyControlAttempt1/09-URDF)
  Install the repository.
 
+- [18h-krang-utils](https://github.gatech.edu/WholeBodyControlAttempt1/18h-krang-utils)
+ Install the repository.
+
 ## Use
 In `examples/3dofddp/controlParams.cfg`, there are many configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
 

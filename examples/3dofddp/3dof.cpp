@@ -135,7 +135,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::cout << "waistLocked: " << (mWaistLocked ? "true" : "false")
               << std::endl;
     std::cout << "COMControlInLowLevel: "
-         << (mCOMControlInLowLevel ? "true" : "false") << std::endl;
+              << (mCOMControlInLowLevel ? "true" : "false") << std::endl;
 
     // Attach the world passed in the input argument to the window, and
     // fetch the robot from the world
@@ -1010,7 +1010,7 @@ void MyWindow::timeStepping() {
       tau_0 = mMPCControlRef(1);
       mdthref += ddthref * mWorld->getTimeStep();
       if (mSteps == 20) {
-        cout << "world's dt: " << mWorld->getTimeStep() << endl;
+        std::cout << "world's dt: " << mWorld->getTimeStep() << std::endl;
       }
       mthref += mdthref * mWorld->getTimeStep();
       mController->update(mLeftTargetPosition, mRightTargetPosition,
@@ -1080,7 +1080,8 @@ void MyWindow::render() {
   }
 
   if (mContinuousZoom) {
-    mZoom = std::min( 0.25, std::max(0.11, 0.25 + ((0.25 - 0.11) / (0 - 3200)) * steps));
+    mZoom = std::min(
+        0.25, std::max(0.11, 0.25 + ((0.25 - 0.11) / (0 - 3200)) * steps));
     glutPostRedisplay();
   } else {
     if (steps < 800) {
