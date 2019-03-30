@@ -1082,9 +1082,9 @@ dart::dynamics::SkeletonPtr createKrang(const char * urdfpath) {
 
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr krang;
-  // ifstream file;
-  // char line [1024];
-  // std::istringstream stream;
+  ifstream file;
+  char line [1024];
+  std::istringstream stream;
   Eigen::Matrix<double, 24, 1> initPoseParams;
   initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0,    0.0,    -4.2976,   0.053232, -0.0575697,
        -1.36631,  -0.495357,   0.969689,   -1.55801,  -0.421576,   -1.27307,   -1.35663,

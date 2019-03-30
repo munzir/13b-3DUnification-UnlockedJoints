@@ -239,7 +239,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mZero7Col.setZero();
 
   Eigen::MatrixXd beta
-      = readInputFileAsMatrix("../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
+      = readInputFileAsMatrix("../../../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
 
   int paramsPerBody = 13;
   // Set Beta parameters after reading them. Set torqueLow/High values
