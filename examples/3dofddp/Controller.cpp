@@ -44,6 +44,7 @@
 #include <krang-utils/file_ops.hpp>
 
 #include "Controller.hpp"
+#include "ik.hpp"
 
 //==============================================================================
 Controller::Controller(dart::dynamics::SkeletonPtr _robot,
@@ -332,10 +333,10 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 Controller::~Controller() {}
 
 //==============================================================================
-struct OptParams {
-  Eigen::MatrixXd P;
-  Eigen::VectorXd b;
-};
+//struct OptParams {
+//  Eigen::MatrixXd P;
+//  Eigen::VectorXd b;
+//};
 
 //==============================================================================
 void printMatrix(Eigen::MatrixXd A) {
@@ -981,23 +982,15 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // Optimization for inverse Kinematics
   if (mInverseKinematicsOnArms) {
-    nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
-    double minf;
-    opt.set_min_objective(optFunc, &optParams);
-    opt.set_xtol_rel(1e-3);
-    if (maxTimeSet) opt.set_maxtime(0.01);
-    vector<double> dqBodyRef_vec(mOptDim);
-    Eigen::VectorXd::Map(&dqBodyRef_vec[0], mdqBodyRef.size()) = mdqBodyRef;
-    try {
-      // nlopt::result result = opt.optimize(dqBodyRef_vec, minf);
-      opt.optimize(dqBodyRef_vec, minf);
-    } catch (std::exception& e) {
-      // std::cout << "nlopt failed: " << e.what() << std::endl;
-    }
-    for (int i = 0; i < mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];
 
     // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
     // optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
+
+    Eigen::VectorXd speeds =
+        computeSpeeds(mOptDim, optFunc, optParams, maxTimeSet, mdqBodyRef);
+
+    mdqBodyRef = speeds;
+
   } else {
     optParamsID = optParams;
   }
