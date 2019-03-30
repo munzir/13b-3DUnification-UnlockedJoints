@@ -41,6 +41,8 @@
  *   POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <krang-utils/file_ops.hpp>
+
 #include "Controller.hpp"
 
 //==============================================================================
@@ -531,7 +533,7 @@ void Controller::setRightArmOptParams(
   xEERref = _RightTargetPosition;
   if (mSteps == 1) {
     std::cout << "xEErefR: " << xEERref(0) << ", " << xEERref(1) << ", "
-         << xEERref(2) << std::endl;
+              << xEERref(2) << std::endl;
   }
 
   // x, dx, ddxref

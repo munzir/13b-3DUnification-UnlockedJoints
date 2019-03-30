@@ -41,8 +41,6 @@
 #include <nlopt.hpp>
 #include <string>
 
-#include "file_ops.hpp"
-
 class filter {
  public:
   filter(const int dim, const int n) {
