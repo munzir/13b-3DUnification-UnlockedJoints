@@ -333,23 +333,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 Controller::~Controller() {}
 
 //==============================================================================
-//struct OptParams {
-//  Eigen::MatrixXd P;
-//  Eigen::VectorXd b;
-//};
-
-//==============================================================================
-void printMatrix(Eigen::MatrixXd A) {
-  for (int i = 0; i < A.rows(); i++) {
-    for (int j = 0; j < A.cols(); j++) {
-      std::cout << A(i, j) << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-//==============================================================================
 void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
                     double* grad, void* f_data) {
   OptParams* constParams = reinterpret_cast<OptParams*>(f_data);
@@ -958,31 +941,17 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // ***************************** QP
   OptParams optParams, optParamsID;
-  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() +
-                        mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() +
-                        mPReg.rows(),
-                    mOptDim);
-  P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim - 1),
-      mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim - 1),
-      mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim - 1),
-      mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim - 1),
-      mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim - 1),
-      mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim - 1),
-      mPSpeedReg.col(0),
-      mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim - 1), mPReg.col(0),
-      mPReg.topRightCorner(mPReg.rows(), mOptDim - 1);
 
-  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() +
-                        mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() +
-                        mbReg.rows(),
-                    mbEER.cols());
-  b << mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg;
+  Eigen::MatrixXd P = defineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal, mPPose,
+                              mPSpeedReg, mPReg, mOptDim);
+  Eigen::MatrixXd b =
+      defineb(mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg);
+
   optParams.P = P;
   optParams.b = b;
 
   // Optimization for inverse Kinematics
   if (mInverseKinematicsOnArms) {
-
     // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
     // optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
 
