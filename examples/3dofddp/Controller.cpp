@@ -755,6 +755,30 @@ void Controller::setBalanceOptParams(double thref, double dthref,
 }
 
 //==============================================================================
+void Controller::setIDRegulationOptParams() {
+  mPPose = mWMatPose;
+  mbPose << mWMatPose * (-mKpPose * (mqBody - mqBodyInit) - mKvPose * mdqBody);
+
+  mPSpeedReg = mWMatSpeedReg;
+  mbSpeedReg << -mWMatSpeedReg * mKvSpeedReg * mdqBody;
+
+  mPReg = mWMatReg;
+  mbReg.setZero();
+}
+
+//==============================================================================
+void Controller::setIKRegulationOptParams() {
+  mPPose = mWMatPose;
+  mbPose << mWMatPose * (-mKpPose * (mqBody - mqBodyInit));
+
+  mPSpeedReg = mWMatSpeedReg;
+  mbSpeedReg.setZero();
+
+  mPReg = mWMatReg;
+  mbReg = mWMatReg * mdqBody;
+}
+
+//==============================================================================
 void Controller::computeDynamics() {
   static Eigen::Matrix<double, 25, 25> M_full;
   static Eigen::Matrix<double, 20, 20> M;
@@ -849,7 +873,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   // Needs mqBody1, mdqBody1, mR, mL
   updateTransformJacobian();
 
-  std::cout << "About to compute P and b for QPs" << std::endl;
+  // std::cout << "About to compute P and b for QPs" << std::endl;
 
   // sets mPEEL and mbEEL
   // Needs mRot0, mLeftEndEffector, mxyz0, mdxyz0, mdRot0, mKpEE, mKvEE, mJtf,
@@ -870,28 +894,13 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // set Regulation Opt Params
   if (!mInverseKinematicsOnArms) {
-    mPPose = mWMatPose;
-    mbPose << mWMatPose *
-                  (-mKpPose * (mqBody - mqBodyInit) - mKvPose * mdqBody);
-
-    mPSpeedReg = mWMatSpeedReg;
-    mbSpeedReg << -mWMatSpeedReg * mKvSpeedReg * mdqBody;
-
-    mPReg = mWMatReg;
-    mbReg.setZero();
+    setIDRegulationOptParams();
 
     // set mMM and mhh
     // Needs mRobot, mJtf, mdJtf, mdqMin, mR
     computeDynamics();
   } else {
-    mPPose = mWMatPose;
-    mbPose << mWMatPose * (-mKpPose * (mqBody - mqBodyInit));
-
-    mPSpeedReg = mWMatSpeedReg;
-    mbSpeedReg.setZero();
-
-    mPReg = mWMatReg;
-    mbReg = mWMatReg * mdqBody;
+    setIKRegulationOptParams();
   }
 
   // ***************************** QP
@@ -928,21 +937,17 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // Optimization for inverse Kinematics
   if (mInverseKinematicsOnArms) {
-    std::cout << "About to compute speeds" << std::endl;
+    // std::cout << "About to compute speeds" << std::endl;
 
     Eigen::VectorXd speeds =
         computeSpeeds(mOptDim, optParams, maxTimeSet, mdqBodyRef);
 
     mdqBodyRef = speeds;
-
   } else {
+    // std::cout << "About to compute accelerations" << std::endl;
     // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
     // optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
     optParamsID = optParams;
-  }
-
-  if (!mInverseKinematicsOnArms) {
-    std::cout << "About to compute accelerations" << std::endl;
 
     OptParams inequalityconstraintParams[2];
     inequalityconstraintParams[0].P = mMM;
@@ -950,21 +955,14 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     inequalityconstraintParams[0].b = -mhh + mTauLim;
     inequalityconstraintParams[1].b = mhh + mTauLim;
 
-    Eigen::VectorXd accelerations = computeAccelerations(
-        mOptDim, optParamsID, inequalityconstraintParams, maxTimeSet,
-        mddqBodyRef);
+    Eigen::VectorXd accelerations =
+        computeAccelerations(mOptDim, optParamsID, inequalityconstraintParams,
+                             maxTimeSet, mddqBodyRef);
 
     mddqBodyRef = accelerations;
-
-    // ************************************ Torques
-    Eigen::VectorXd bodyTorques = mMM * mddqBodyRef + mhh;
-    mForces(0) = -mR / mL * tau_0 - bodyTorques(0) / 2;
-    mForces(1) = mR / mL * tau_0 - bodyTorques(0) / 2;
-    mForces.tail(mOptDim - 1) = bodyTorques.tail(mOptDim - 1);
   }
 
-  std::cout << "About to compute torques" << std::endl;
-
+  // std::cout << "About to compute torques" << std::endl;
   if (mInverseKinematicsOnArms) {
     const vector<size_t> dqIndex{11, 12, 13, 14, 15, 16, 17,
                                  18, 19, 20, 21, 22, 23, 24};
@@ -1004,6 +1002,11 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
       mRobot->setVelocities(dqIndex2, mdqBodyRef.segment(2, 3));
     }
   } else {
+    // ************************************ Torques
+    Eigen::VectorXd bodyTorques = mMM * mddqBodyRef + mhh;
+    mForces(0) = -mR / mL * tau_0 - bodyTorques(0) / 2;
+    mForces(1) = mR / mL * tau_0 - bodyTorques(0) / 2;
+    mForces.tail(mOptDim - 1) = bodyTorques.tail(mOptDim - 1);
     const vector<size_t> index{6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
                                16, 17, 18, 19, 20, 21, 22, 23, 24};
     mRobot->setForces(index, mForces);
@@ -1028,9 +1031,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     cout << "bReg: " << mbReg.rows() << " x " << mbReg.cols() << endl;
     // cout << "bxdotReg: " << bxdotReg.rows() << " x " << bxdotReg.cols() <<
     // endl;
-  }
 
-  if (mSteps < 0) {
     // cout << "ddqBodyRef: " << endl; for(int i=0; i<18; i++) {cout <<
     // mddqBodyRef(i) << ", ";} cout << endl; cout << "ddqBodyRef_vec: " <<
     // endl; for(int i=0; i<18; i++) {cout << ddqBodyRef_vec[i] << ", ";} cout

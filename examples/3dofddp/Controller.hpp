@@ -87,6 +87,10 @@ class Controller {
 
   void setBalanceOptParams(double thref, double dthref, double ddthref);
 
+  void setIDRegulationOptParams();
+
+  void setIKRegulationOptParams();
+
   void computeDynamics();
 
   /// \brief
