@@ -33,16 +33,40 @@ Eigen::MatrixXd iddefineb(Eigen::Matrix<double, 3, 1> mbEER,
                           Eigen::Matrix<double, 18, 1> mbSpeedReg,
                           Eigen::Matrix<double, 18, 1> mbReg) {}
 
+// // constraint function
+void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
+                    double* grad, void* f_data) {
+  OptParams* constParams = reinterpret_cast<OptParams*>(f_data);
+  // std::cout << "done reading optParams " << std::endl;
+
+  if (grad != NULL) {
+    for (int i = 0; i < m; i++) {
+      for (int j = 0; j < n; j++) {
+        grad[i * n + j] = constParams->P(i, j);
+      }
+    }
+  }
+  // std::cout << "done with gradient" << std::endl;
+
+  Eigen::MatrixXd X = Eigen::VectorXd::Zero(n);
+  for (size_t i = 0; i < n; i++) X(i) = x[i];
+  // std::cout << "done reading x" << std::endl;
+
+  Eigen::VectorXd mResult;
+  mResult = constParams->P * X - constParams->b;
+  for (size_t i = 0; i < m; i++) {
+    result[i] = mResult(i);
+  }
+  // std::cout << "done calculating the result"
+}
+
 // // compute accelerations for joints based on id algorithm
 Eigen::VectorXd computeAccelerations(
     int mOptDim,
     double (*optFunc)(const std::vector<double>& x, std::vector<double>& grad,
                       void* my_func_data),
-    OptParams optParamsID,
-    void (*constraintFunc)(unsigned m, double* result, unsigned n,
-                           const double* x, double* grad, void* f_data),
-    OptParams* inequalityconstraintParams, bool maxTimeSet,
-    Eigen::VectorXd mddqBodyRef) {
+    OptParams optParamsID, OptParams* inequalityconstraintParams,
+    bool maxTimeSet, Eigen::VectorXd mddqBodyRef) {
   const std::vector<double> inequalityconstraintTol(mOptDim, 1e-3);
   // nlopt::opt opt(nlopt::LN_COBYLA, 30);
   nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);

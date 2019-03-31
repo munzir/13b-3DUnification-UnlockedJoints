@@ -45,8 +45,8 @@
 #include <nlopt.hpp>
 
 #include "Controller.hpp"
-#include "ik.hpp"
 #include "id.hpp"
+#include "ik.hpp"
 
 //==============================================================================
 Controller::Controller(dart::dynamics::SkeletonPtr _robot,
@@ -333,33 +333,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
 //==============================================================================
 Controller::~Controller() {}
-
-//==============================================================================
-void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
-                    double* grad, void* f_data) {
-  OptParams* constParams = reinterpret_cast<OptParams*>(f_data);
-  // std::cout << "done reading optParams " << std::endl;
-
-  if (grad != NULL) {
-    for (int i = 0; i < m; i++) {
-      for (int j = 0; j < n; j++) {
-        grad[i * n + j] = constParams->P(i, j);
-      }
-    }
-  }
-  // std::cout << "done with gradient" << std::endl;
-
-  Eigen::MatrixXd X = Eigen::VectorXd::Zero(n);
-  for (size_t i = 0; i < n; i++) X(i) = x[i];
-  // std::cout << "done reading x" << std::endl;
-
-  Eigen::VectorXd mResult;
-  mResult = constParams->P * X - constParams->b;
-  for (size_t i = 0; i < m; i++) {
-    result[i] = mResult(i);
-  }
-  // std::cout << "done calculating the result"
-}
 
 //==============================================================================
 double optFunc(const std::vector<double>& x, std::vector<double>& grad,
@@ -898,6 +871,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   // Needs mqBody1, mdqBody1, mR, mL
   updateTransformJacobian();
 
+  std::cout << "About to compute P and b for QPs" << std::endl;
+
   // sets mPEEL and mbEEL
   // Needs mRot0, mLeftEndEffector, mxyz0, mdxyz0, mdRot0, mKpEE, mKvEE, mJtf,
   // mdJtf
@@ -945,18 +920,37 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   OptParams optParams;
   OptParams optParamsID;
 
-  Eigen::MatrixXd P = defineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal, mPPose,
-                              mPSpeedReg, mPReg, mOptDim);
-  Eigen::MatrixXd b =
-      defineb(mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg);
+  // Eigen::MatrixXd P = defineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal, mPPose,
+  //                            mPSpeedReg, mPReg, mOptDim);
+  // Eigen::MatrixXd b =
+  //    defineb(mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg);
+
+  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() +
+                        mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() +
+                        mPReg.rows(),
+                    mOptDim);
+  P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim - 1),
+      mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim - 1),
+      mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim - 1),
+      mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim - 1),
+      mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim - 1),
+      mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim - 1),
+      mPSpeedReg.col(0),
+      mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim - 1), mPReg.col(0),
+      mPReg.topRightCorner(mPReg.rows(), mOptDim - 1);
+
+  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() +
+                        mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() +
+                        mbReg.rows(),
+                    mbEER.cols());
+  b << mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg;
 
   optParams.P = P;
   optParams.b = b;
 
   // Optimization for inverse Kinematics
   if (mInverseKinematicsOnArms) {
-    // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
-    // optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
+    std::cout << "About to compute speeds" << std::endl;
 
     Eigen::VectorXd speeds =
         computeSpeeds(mOptDim, optFunc, optParams, maxTimeSet, mdqBodyRef);
@@ -964,41 +958,23 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     mdqBodyRef = speeds;
 
   } else {
+    // optParamsID.P = Eigen::MatrixXd::Identity(mOptDim, mOptDim);
+    // optParamsID.b = -mKvSpeedReg*(mdqBody - mdqBodyRef);
     optParamsID = optParams;
   }
 
   if (!mInverseKinematicsOnArms) {
+    std::cout << "About to compute accelerations" << std::endl;
+
     OptParams inequalityconstraintParams[2];
     inequalityconstraintParams[0].P = mMM;
     inequalityconstraintParams[1].P = -mMM;
     inequalityconstraintParams[0].b = -mhh + mTauLim;
     inequalityconstraintParams[1].b = mhh + mTauLim;
 
-    // const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
-    //// nlopt::opt opt(nlopt::LN_COBYLA, 30);
-    // nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
-    // double minf;
-    // opt.set_min_objective(optFunc, &optParamsID);
-    // opt.add_inequality_mconstraint(constraintFunc,
-    //                               &inequalityconstraintParams[0],
-    //                               inequalityconstraintTol);
-    // opt.add_inequality_mconstraint(constraintFunc,
-    //                               &inequalityconstraintParams[1],
-    //                               inequalityconstraintTol);
-    // opt.set_xtol_rel(1e-3);
-    // if (maxTimeSet) opt.set_maxtime(0.01);
-    // vector<double> ddqBodyRef_vec(mOptDim);
-    // Eigen::VectorXd::Map(&ddqBodyRef_vec[0], mddqBodyRef.size()) =
-    // mddqBodyRef; try {
-    //  nlopt::result result = opt.optimize(ddqBodyRef_vec, minf);
-    //} catch (std::exception& e) {
-    //  // std::cout << "nlopt failed: " << e.what() << std::endl;
-    //}
-    // for (int i = 0; i < mOptDim; i++) mddqBodyRef(i) = ddqBodyRef_vec[i];
-
     Eigen::VectorXd accelerations = computeAccelerations(
-        mOptDim, optFunc, optParamsID, constraintFunc,
-        inequalityconstraintParams, maxTimeSet, mddqBodyRef);
+        mOptDim, optFunc, optParamsID, inequalityconstraintParams, maxTimeSet,
+        mddqBodyRef);
 
     mddqBodyRef = accelerations;
 
@@ -1008,6 +984,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     mForces(1) = mR / mL * tau_0 - bodyTorques(0) / 2;
     mForces.tail(mOptDim - 1) = bodyTorques.tail(mOptDim - 1);
   }
+
+  std::cout << "About to compute torques" << std::endl;
 
   if (mInverseKinematicsOnArms) {
     const vector<size_t> dqIndex{11, 12, 13, 14, 15, 16, 17,

@@ -68,12 +68,10 @@ Eigen::VectorXd computeSpeeds(int mOptDim,
     // nlopt::result result = opt.optimize(dqBodyRef_vec, minf);
     opt.optimize(dqBodyRef_vec, minf);
   } catch (std::exception& e) {
-    // std::cout << "nlopt failed: " << e.what() << std::endl;
+    std::cout << "nlopt failed: " << e.what() << std::endl;
   }
 
   for (int i = 0; i < mOptDim; i++) mdqBodyRef(i) = dqBodyRef_vec[i];
 
-  Eigen::VectorXd initialSpeeds = mdqBodyRef;
-
-  return initialSpeeds;
+  return mdqBodyRef;
 }
