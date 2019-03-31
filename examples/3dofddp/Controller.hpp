@@ -38,7 +38,6 @@
 #include <dart/dart.hpp>
 #include <fstream>
 #include <iostream>
-#include <nlopt.hpp>
 #include <string>
 
 class filter {

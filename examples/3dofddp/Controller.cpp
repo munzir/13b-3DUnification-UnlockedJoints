@@ -42,9 +42,11 @@
  */
 
 #include <krang-utils/file_ops.hpp>
+#include <nlopt.hpp>
 
 #include "Controller.hpp"
 #include "ik.hpp"
+#include "id.hpp"
 
 //==============================================================================
 Controller::Controller(dart::dynamics::SkeletonPtr _robot,
@@ -940,7 +942,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   }
 
   // ***************************** QP
-  OptParams optParams, optParamsID;
+  OptParams optParams;
+  OptParams optParamsID;
 
   Eigen::MatrixXd P = defineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal, mPPose,
                               mPSpeedReg, mPReg, mOptDim);
@@ -965,33 +968,39 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   }
 
   if (!mInverseKinematicsOnArms) {
-    const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
     OptParams inequalityconstraintParams[2];
     inequalityconstraintParams[0].P = mMM;
     inequalityconstraintParams[1].P = -mMM;
     inequalityconstraintParams[0].b = -mhh + mTauLim;
     inequalityconstraintParams[1].b = mhh + mTauLim;
 
-    // nlopt::opt opt(nlopt::LN_COBYLA, 30);
-    nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
-    double minf;
-    opt.set_min_objective(optFunc, &optParamsID);
-    opt.add_inequality_mconstraint(constraintFunc,
-                                   &inequalityconstraintParams[0],
-                                   inequalityconstraintTol);
-    opt.add_inequality_mconstraint(constraintFunc,
-                                   &inequalityconstraintParams[1],
-                                   inequalityconstraintTol);
-    opt.set_xtol_rel(1e-3);
-    if (maxTimeSet) opt.set_maxtime(0.01);
-    vector<double> ddqBodyRef_vec(mOptDim);
-    Eigen::VectorXd::Map(&ddqBodyRef_vec[0], mddqBodyRef.size()) = mddqBodyRef;
-    try {
-      nlopt::result result = opt.optimize(ddqBodyRef_vec, minf);
-    } catch (std::exception& e) {
-      // std::cout << "nlopt failed: " << e.what() << std::endl;
-    }
-    for (int i = 0; i < mOptDim; i++) mddqBodyRef(i) = ddqBodyRef_vec[i];
+    // const vector<double> inequalityconstraintTol(mOptDim, 1e-3);
+    //// nlopt::opt opt(nlopt::LN_COBYLA, 30);
+    // nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
+    // double minf;
+    // opt.set_min_objective(optFunc, &optParamsID);
+    // opt.add_inequality_mconstraint(constraintFunc,
+    //                               &inequalityconstraintParams[0],
+    //                               inequalityconstraintTol);
+    // opt.add_inequality_mconstraint(constraintFunc,
+    //                               &inequalityconstraintParams[1],
+    //                               inequalityconstraintTol);
+    // opt.set_xtol_rel(1e-3);
+    // if (maxTimeSet) opt.set_maxtime(0.01);
+    // vector<double> ddqBodyRef_vec(mOptDim);
+    // Eigen::VectorXd::Map(&ddqBodyRef_vec[0], mddqBodyRef.size()) =
+    // mddqBodyRef; try {
+    //  nlopt::result result = opt.optimize(ddqBodyRef_vec, minf);
+    //} catch (std::exception& e) {
+    //  // std::cout << "nlopt failed: " << e.what() << std::endl;
+    //}
+    // for (int i = 0; i < mOptDim; i++) mddqBodyRef(i) = ddqBodyRef_vec[i];
+
+    Eigen::VectorXd accelerations = computeAccelerations(
+        mOptDim, optFunc, optParamsID, constraintFunc,
+        inequalityconstraintParams, maxTimeSet, mddqBodyRef);
+
+    mddqBodyRef = accelerations;
 
     // ************************************ Torques
     Eigen::VectorXd bodyTorques = mMM * mddqBodyRef + mhh;

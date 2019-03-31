@@ -8,27 +8,40 @@
 #include <dart/dart.hpp>
 #include <nlopt.hpp>
 
-struct OptParams {
-  Eigen::MatrixXd P;
-  Eigen::VectorXd b;
-};
+// See comment on id.hpp
+#include "id.hpp"
+//struct OptParams {
+//  Eigen::MatrixXd P;
+//  Eigen::VectorXd b;
+//};
 
 // Function Prototypes
+
+// // Define Regulation Opt Params P
+//Eigen::MatrixXd definePReg(mWMatPose, mWMatSpeedReg,);
+
+// // Define Regulation Opt Params b
+//Eigen::MatrixXd definePReg();
+
 // // Define P for QP
-Eigen::MatrixXd defineP(
-    Eigen::Matrix<double, 3, 18> mPEER, Eigen::Matrix<double, 3, 18> mPOrR,
-    Eigen::Matrix<double, 3, 18> mPEEL, Eigen::Matrix<double, 3, 18> mPOrL,
-    Eigen::VectorXd mPBal, Eigen::Matrix<double, 18, 18> mPPose,
-    Eigen::Matrix<double, 18, 18> mPSpeedReg,
-    Eigen::Matrix<double, 18, 18> mPReg, int mOptDim);
+Eigen::MatrixXd defineP(Eigen::Matrix<double, 3, 18> mPEER,
+                        Eigen::Matrix<double, 3, 18> mPOrR,
+                        Eigen::Matrix<double, 3, 18> mPEEL,
+                        Eigen::Matrix<double, 3, 18> mPOrL,
+                        Eigen::VectorXd mPBal,
+                        Eigen::Matrix<double, 18, 18> mPPose,
+                        Eigen::Matrix<double, 18, 18> mPSpeedReg,
+                        Eigen::Matrix<double, 18, 18> mPReg, int mOptDim);
 
 // // Define b for QP
-Eigen::MatrixXd defineb(
-    Eigen::Matrix<double, 3, 1> mbEER, Eigen::Matrix<double, 3, 1> mbOrR,
-    Eigen::Matrix<double, 3, 1> mbEEL, Eigen::Matrix<double, 3, 1> mbOrL,
-    Eigen::VectorXd mbBal, Eigen::Matrix<double, 18, 1> mbPose,
-    Eigen::Matrix<double, 18, 1> mbSpeedReg,
-    Eigen::Matrix<double, 18, 1> mbReg);
+Eigen::MatrixXd defineb(Eigen::Matrix<double, 3, 1> mbEER,
+                        Eigen::Matrix<double, 3, 1> mbOrR,
+                        Eigen::Matrix<double, 3, 1> mbEEL,
+                        Eigen::Matrix<double, 3, 1> mbOrL,
+                        Eigen::VectorXd mbBal,
+                        Eigen::Matrix<double, 18, 1> mbPose,
+                        Eigen::Matrix<double, 18, 1> mbSpeedReg,
+                        Eigen::Matrix<double, 18, 1> mbReg);
 
 // // compute speeds for joints based on ik algorithm
 Eigen::VectorXd computeSpeeds(int mOptDim,
