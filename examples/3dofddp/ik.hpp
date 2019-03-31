@@ -10,18 +10,22 @@
 
 // See comment on id.hpp
 #include "id.hpp"
-//struct OptParams {
+// struct OptParams {
 //  Eigen::MatrixXd P;
 //  Eigen::VectorXd b;
 //};
+// the same thing happens for the optFunc definition below
+// // opt function
+// double optFunc(const std::vector<double>& x, std::vector<double>& grad,
+//              void* my_func_data);
 
 // Function Prototypes
 
 // // Define Regulation Opt Params P
-//Eigen::MatrixXd definePReg(mWMatPose, mWMatSpeedReg,);
+// Eigen::MatrixXd definePReg(mWMatPose, mWMatSpeedReg,);
 
 // // Define Regulation Opt Params b
-//Eigen::MatrixXd definePReg();
+// Eigen::MatrixXd definePReg();
 
 // // Define P for QP
 Eigen::MatrixXd defineP(Eigen::Matrix<double, 3, 18> mPEER,
@@ -44,11 +48,7 @@ Eigen::MatrixXd defineb(Eigen::Matrix<double, 3, 1> mbEER,
                         Eigen::Matrix<double, 18, 1> mbReg);
 
 // // compute speeds for joints based on ik algorithm
-Eigen::VectorXd computeSpeeds(int mOptDim,
-                              double (*optFunc)(const std::vector<double>& x,
-                                                std::vector<double>& grad,
-                                                void* my_func_data),
-                              OptParams optParams, bool maxTimeSet,
+Eigen::VectorXd computeSpeeds(int mOptDim, OptParams optParams, bool maxTimeSet,
                               Eigen::VectorXd mdqBodyRef);
 
 #endif  // IK_HPP
