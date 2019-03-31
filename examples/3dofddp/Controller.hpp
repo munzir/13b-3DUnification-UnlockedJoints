@@ -87,11 +87,13 @@ class Controller {
 
   void setBalanceOptParams(double thref, double dthref, double ddthref);
 
-  void setIDRegulationOptParams();
-
-  void setIKRegulationOptParams();
+  void setRegulationOptParams();
 
   void computeDynamics();
+
+  Eigen::MatrixXd defineP();
+
+  Eigen::VectorXd defineb();
 
   /// \brief
   void update(const Eigen::Vector3d& _LeftTargetPosition,
