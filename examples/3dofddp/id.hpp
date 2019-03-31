@@ -44,17 +44,18 @@ Eigen::MatrixXd iddefineb(Eigen::Matrix<double, 3, 1> mbEER,
                           Eigen::Matrix<double, 18, 1> mbSpeedReg,
                           Eigen::Matrix<double, 18, 1> mbReg);
 
+// // opt function
+double optFunc(const std::vector<double>& x, std::vector<double>& grad,
+               void* my_func_data);
+
 // // constraint function
 void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
                     double* grad, void* f_data);
 
 // // compute accelerations for joints based on id algorithm
-Eigen::VectorXd computeAccelerations(
-    int mOptDim,
-    double (*optFunc)(const std::vector<double>& x, std::vector<double>& grad,
-                      void* my_func_data),
-    OptParams optParamsID,
-    OptParams* inequalityconstraintParams, bool maxTimeSet,
-    Eigen::VectorXd mddqBodyRef);
+Eigen::VectorXd computeAccelerations(int mOptDim, OptParams optParamsID,
+                                     OptParams* inequalityconstraintParams,
+                                     bool maxTimeSet,
+                                     Eigen::VectorXd mddqBodyRef);
 
 #endif  // ID_HPP

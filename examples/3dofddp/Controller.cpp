@@ -335,28 +335,6 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 Controller::~Controller() {}
 
 //==============================================================================
-double optFunc(const std::vector<double>& x, std::vector<double>& grad,
-               void* my_func_data) {
-  OptParams* optParams = reinterpret_cast<OptParams*>(my_func_data);
-  // std::cout << "done reading optParams " << std::endl;
-  // Eigen::Matrix<double, 18, 1> X(x.data());
-  size_t n = x.size();
-  Eigen::VectorXd X = Eigen::VectorXd::Zero(n);
-  for (int i = 0; i < n; i++) X(i) = x[i];
-  // std::cout << "done reading x" << std::endl;
-
-  if (!grad.empty()) {
-    Eigen::MatrixXd mGrad =
-        optParams->P.transpose() * (optParams->P * X - optParams->b);
-    // std::cout << "done calculating gradient" << std::endl;
-    Eigen::VectorXd::Map(&grad[0], mGrad.size()) = mGrad;
-    // std::cout << "done changing gradient cast" << std::endl;
-  }
-  // std::cout << "about to return something" << std::endl;
-  return (0.5 * pow((optParams->P * X - optParams->b).norm(), 2));
-}
-
-//==============================================================================
 void Controller::updatePositions() {
   mBaseTf = mRobot->getBodyNode(0)->getTransform().matrix();
   mq = mRobot->getPositions();
@@ -491,7 +469,7 @@ void Controller::setRightArmOptParams(
 
   xEERref = _RightTargetPosition;
   if (mSteps == 1) {
-    std::cout << "xEErefR: " << xEERref(0) << ", " << xEERref(1) << ", "
+    std::cout << "xEERref: " << xEERref(0) << ", " << xEERref(1) << ", "
               << xEERref(2) << std::endl;
   }
 
@@ -953,7 +931,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     std::cout << "About to compute speeds" << std::endl;
 
     Eigen::VectorXd speeds =
-        computeSpeeds(mOptDim, optFunc, optParams, maxTimeSet, mdqBodyRef);
+        computeSpeeds(mOptDim, optParams, maxTimeSet, mdqBodyRef);
 
     mdqBodyRef = speeds;
 
@@ -973,7 +951,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     inequalityconstraintParams[1].b = mhh + mTauLim;
 
     Eigen::VectorXd accelerations = computeAccelerations(
-        mOptDim, optFunc, optParamsID, inequalityconstraintParams, maxTimeSet,
+        mOptDim, optParamsID, inequalityconstraintParams, maxTimeSet,
         mddqBodyRef);
 
     mddqBodyRef = accelerations;

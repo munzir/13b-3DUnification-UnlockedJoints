@@ -51,11 +51,7 @@ Eigen::MatrixXd defineb(Eigen::Matrix<double, 3, 1> mbEER,
 }
 
 // // compute speeds for joints based on ik algorithm
-Eigen::VectorXd computeSpeeds(int mOptDim,
-                              double (*optFunc)(const std::vector<double>& x,
-                                                std::vector<double>& grad,
-                                                void* my_func_data),
-                              OptParams optParams, bool maxTimeSet,
+Eigen::VectorXd computeSpeeds(int mOptDim, OptParams optParams, bool maxTimeSet,
                               Eigen::VectorXd mdqBodyRef) {
   nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
   double minf;

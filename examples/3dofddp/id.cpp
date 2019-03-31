@@ -33,6 +33,28 @@ Eigen::MatrixXd iddefineb(Eigen::Matrix<double, 3, 1> mbEER,
                           Eigen::Matrix<double, 18, 1> mbSpeedReg,
                           Eigen::Matrix<double, 18, 1> mbReg) {}
 
+// // opt function
+double optFunc(const std::vector<double>& x, std::vector<double>& grad,
+               void* my_func_data) {
+  OptParams* optParams = reinterpret_cast<OptParams*>(my_func_data);
+  // std::cout << "done reading optParams " << std::endl;
+  // Eigen::Matrix<double, 18, 1> X(x.data());
+  size_t n = x.size();
+  Eigen::VectorXd X = Eigen::VectorXd::Zero(n);
+  for (int i = 0; i < n; i++) X(i) = x[i];
+  // std::cout << "done reading x" << std::endl;
+
+  if (!grad.empty()) {
+    Eigen::MatrixXd mGrad =
+        optParams->P.transpose() * (optParams->P * X - optParams->b);
+    // std::cout << "done calculating gradient" << std::endl;
+    Eigen::VectorXd::Map(&grad[0], mGrad.size()) = mGrad;
+    // std::cout << "done changing gradient cast" << std::endl;
+  }
+  // std::cout << "about to return something" << std::endl;
+  return (0.5 * pow((optParams->P * X - optParams->b).norm(), 2));
+}
+
 // // constraint function
 void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
                     double* grad, void* f_data) {
@@ -61,12 +83,10 @@ void constraintFunc(unsigned m, double* result, unsigned n, const double* x,
 }
 
 // // compute accelerations for joints based on id algorithm
-Eigen::VectorXd computeAccelerations(
-    int mOptDim,
-    double (*optFunc)(const std::vector<double>& x, std::vector<double>& grad,
-                      void* my_func_data),
-    OptParams optParamsID, OptParams* inequalityconstraintParams,
-    bool maxTimeSet, Eigen::VectorXd mddqBodyRef) {
+Eigen::VectorXd computeAccelerations(int mOptDim, OptParams optParamsID,
+                                     OptParams* inequalityconstraintParams,
+                                     bool maxTimeSet,
+                                     Eigen::VectorXd mddqBodyRef) {
   const std::vector<double> inequalityconstraintTol(mOptDim, 1e-3);
   // nlopt::opt opt(nlopt::LN_COBYLA, 30);
   nlopt::opt opt(nlopt::LD_SLSQP, mOptDim);
