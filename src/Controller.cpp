@@ -109,7 +109,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // *********************************** Tunable Parameters
   config4cpp::Configuration* cfg = config4cpp::Configuration::create();
   const char* scope = "";
-  const char* configFile = "../../../examples/3dofddp/controlParams.cfg";
+  const char* configFile = "../../src/controlParams.cfg";
   const char* str;
   std::istringstream stream;
   double newDouble;
@@ -275,7 +275,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mZero7Col.setZero();
 
   Eigen::MatrixXd beta = readInputFileAsMatrix(
-      "../../../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
+      "../../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
 
   int paramsPerBody = 13;
   // Set Beta parameters after reading them. Set torqueLow/High values

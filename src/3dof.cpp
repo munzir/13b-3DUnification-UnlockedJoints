@@ -32,7 +32,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
     // *********************************** Tunable Parameters
     config4cpp::Configuration* cfg = config4cpp::Configuration::create();
     const char* scope = "";
-    const char* configFile = "../../../examples/3dofddp/controlParams.cfg";
+    const char* configFile = "../../src/controlParams.cfg";
     const char* str;
     const char* urdfpath;
     std::istringstream stream;
@@ -1213,7 +1213,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   krang->setName("krang");
 
   // Read initial pose from the file
-  file = std::ifstream("../../../examples/3dofddp/defaultInit.txt");
+  file = std::ifstream("../../src/defaultInit.txt");
   assert(file.is_open());
   file.getline(line, 1024);
   stream = std::istringstream(line);
@@ -1343,7 +1343,7 @@ int main(int argc, char* argv[]) {
   double trayCupFriction;
   config4cpp::Configuration* cfg = config4cpp::Configuration::create();
   const char* scope = "";
-  const char* configFile = "../../../examples/3dofddp/controlParams.cfg";
+  const char* configFile = "../../src/controlParams.cfg";
   const char* urdfpath;
   try {
     cfg->parse(configFile);
