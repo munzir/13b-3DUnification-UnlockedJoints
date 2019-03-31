@@ -33,7 +33,7 @@
  Install the repository.
 
 ## Use
-In `examples/3dofddp/controlParams.cfg`, there are many configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
+In `src/controlParams.cfg`, there are many configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
 
 To compile:
 
@@ -44,5 +44,5 @@ To compile:
 
 To run:
 
-    cd examples/3dofddp
+    cd src/
     ./3dofddp

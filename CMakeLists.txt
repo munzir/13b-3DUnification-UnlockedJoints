@@ -52,5 +52,5 @@ file(GLOB DDP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/include/ddp/*.hpp")
 target_sources(ddp INTERFACE ${DDP_SOURCES})
 
 if(DDP_BUILD_EXAMPLES)
-    add_subdirectory(examples)
+    add_subdirectory(src)
 endif()
