@@ -755,27 +755,27 @@ void Controller::setBalanceOptParams(double thref, double dthref,
 }
 
 //==============================================================================
-void Controller::setIDRegulationOptParams() {
-  mPPose = mWMatPose;
-  mbPose << mWMatPose * (-mKpPose * (mqBody - mqBodyInit) - mKvPose * mdqBody);
+void Controller::setRegulationOptParams() {
+  if (!mInverseKinematicsOnArms) {
+    mPPose = mWMatPose;
+    mbPose << mWMatPose *
+                  (-mKpPose * (mqBody - mqBodyInit) - mKvPose * mdqBody);
 
-  mPSpeedReg = mWMatSpeedReg;
-  mbSpeedReg << -mWMatSpeedReg * mKvSpeedReg * mdqBody;
+    mPSpeedReg = mWMatSpeedReg;
+    mbSpeedReg << -mWMatSpeedReg * mKvSpeedReg * mdqBody;
 
-  mPReg = mWMatReg;
-  mbReg.setZero();
-}
+    mPReg = mWMatReg;
+    mbReg.setZero();
+  } else {
+    mPPose = mWMatPose;
+    mbPose << mWMatPose * (-mKpPose * (mqBody - mqBodyInit));
 
-//==============================================================================
-void Controller::setIKRegulationOptParams() {
-  mPPose = mWMatPose;
-  mbPose << mWMatPose * (-mKpPose * (mqBody - mqBodyInit));
+    mPSpeedReg = mWMatSpeedReg;
+    mbSpeedReg.setZero();
 
-  mPSpeedReg = mWMatSpeedReg;
-  mbSpeedReg.setZero();
-
-  mPReg = mWMatReg;
-  mbReg = mWMatReg * mdqBody;
+    mPReg = mWMatReg;
+    mbReg = mWMatReg * mdqBody;
+  }
 }
 
 //==============================================================================
@@ -854,6 +854,35 @@ void Controller::computeDynamics() {
 }
 
 //==============================================================================
+Eigen::MatrixXd Controller::defineP() {
+  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() +
+                        mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() +
+                        mPReg.rows(),
+                    mOptDim);
+  P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim - 1),
+      mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim - 1),
+      mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim - 1),
+      mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim - 1),
+      mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim - 1),
+      mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim - 1),
+      mPSpeedReg.col(0),
+      mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim - 1), mPReg.col(0),
+      mPReg.topRightCorner(mPReg.rows(), mOptDim - 1);
+
+  return P;
+}
+
+//==============================================================================
+Eigen::VectorXd Controller::defineb() {
+  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() +
+                        mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() +
+                        mbReg.rows(),
+                    mbEER.cols());
+  b << mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg;
+  return b;
+}
+
+//==============================================================================
 void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
                         const Eigen::Vector3d& _RightTargetPosition,
                         const Eigen::Vector3d& _LeftTargetRPY,
@@ -893,44 +922,20 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   setBalanceOptParams(thref, dthref, ddthref);
 
   // set Regulation Opt Params
-  if (!mInverseKinematicsOnArms) {
-    setIDRegulationOptParams();
+  setRegulationOptParams();
 
+  if (!mInverseKinematicsOnArms) {
     // set mMM and mhh
     // Needs mRobot, mJtf, mdJtf, mdqMin, mR
     computeDynamics();
-  } else {
-    setIKRegulationOptParams();
   }
 
   // ***************************** QP
   OptParams optParams;
   OptParams optParamsID;
 
-  // Eigen::MatrixXd P = defineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal, mPPose,
-  //                            mPSpeedReg, mPReg, mOptDim);
-  // Eigen::MatrixXd b =
-  //    defineb(mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg);
-
-  Eigen::MatrixXd P(mPEER.rows() + mPOrR.rows() + mPEEL.rows() + mPOrL.rows() +
-                        mPBal.rows() + mPPose.rows() + mPSpeedReg.rows() +
-                        mPReg.rows(),
-                    mOptDim);
-  P << mPEER.col(0), mPEER.topRightCorner(mPEER.rows(), mOptDim - 1),
-      mPOrR.col(0), mPOrR.topRightCorner(mPOrR.rows(), mOptDim - 1),
-      mPEEL.col(0), mPEEL.topRightCorner(mPEEL.rows(), mOptDim - 1),
-      mPOrL.col(0), mPOrL.topRightCorner(mPOrL.rows(), mOptDim - 1),
-      mPBal.col(0), mPBal.topRightCorner(mPBal.rows(), mOptDim - 1),
-      mPPose.col(0), mPPose.topRightCorner(mPPose.rows(), mOptDim - 1),
-      mPSpeedReg.col(0),
-      mPSpeedReg.topRightCorner(mPSpeedReg.rows(), mOptDim - 1), mPReg.col(0),
-      mPReg.topRightCorner(mPReg.rows(), mOptDim - 1);
-
-  Eigen::VectorXd b(mbEER.rows() + mbOrR.rows() + mbEEL.rows() + mbOrL.rows() +
-                        mbBal.rows() + mbPose.rows() + mbSpeedReg.rows() +
-                        mbReg.rows(),
-                    mbEER.cols());
-  b << mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg;
+  Eigen::MatrixXd P = defineP();
+  Eigen::VectorXd b = defineb();
 
   optParams.P = P;
   optParams.b = b;
@@ -938,7 +943,6 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   // Optimization for inverse Kinematics
   if (mInverseKinematicsOnArms) {
     // std::cout << "About to compute speeds" << std::endl;
-
     Eigen::VectorXd speeds =
         computeSpeeds(mOptDim, optParams, maxTimeSet, mdqBodyRef);
 
