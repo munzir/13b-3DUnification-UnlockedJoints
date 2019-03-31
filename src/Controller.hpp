@@ -33,32 +33,12 @@
 #define EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
 
 #include <config4cpp/Configuration.h>
-#include <Eigen/Eigen>
-#include <boost/circular_buffer.hpp>
 #include <dart/dart.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
 
-class filter {
- public:
-  filter(const int dim, const int n) {
-    samples.set_capacity(n);
-    total = Eigen::VectorXd::Zero(dim, 1);
-  }
-  void AddSample(Eigen::VectorXd v) {
-    if (samples.full()) {
-      total -= samples.front();
-    }
-    samples.push_back(v);
-    total += v;
-    average = total / samples.size();
-  }
-
-  boost::circular_buffer<Eigen::VectorXd> samples;
-  Eigen::VectorXd total;
-  Eigen::VectorXd average;
-};
+#include "filter.hpp"
 
 /// \brief Operational space controller for 6-dof manipulator
 class Controller {
