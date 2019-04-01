@@ -38,16 +38,20 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::istringstream stream;
     double newDouble;
 
-    int numBodyLinks = 18;
+    numDof = 25;
+    numBodyLinks = 18;
+
+    numControls = 2;
+    numStates = 8;
 
     mTauLim = Eigen::VectorXd(numBodyLinks);
-    mForces = Eigen::VectorXd(2);
-    mDDPStatePenalties = Eigen::VectorXd(8);
-    mDDPTerminalStatePenalties = Eigen::VectorXd(8);
-    mDDPControlPenalties = Eigen::VectorXd(2);
-    mMPCStatePenalties = Eigen::VectorXd(8);
-    mMPCTerminalStatePenalties = Eigen::VectorXd(8);
-    mMPCControlPenalties = Eigen::VectorXd(2);
+    mForces = Eigen::VectorXd(numControls);
+    mDDPStatePenalties = Eigen::VectorXd(numStates);
+    mDDPTerminalStatePenalties = Eigen::VectorXd(numStates);
+    mDDPControlPenalties = Eigen::VectorXd(numControls);
+    mMPCStatePenalties = Eigen::VectorXd(numStates);
+    mMPCTerminalStatePenalties = Eigen::VectorXd(numStates);
+    mMPCControlPenalties = Eigen::VectorXd(numControls);
 
     try {
       cfg->parse(configFile);
@@ -60,7 +64,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
       str = cfg->lookupString(scope, "goalState");
       stream.str(str);
-      for (int i = 0; i < 8; i++) stream >> mGoalState(i);
+      for (int i = 0; i < numStates; i++) stream >> mGoalState(i);
       stream.clear();
 
       mFinalTime = cfg->lookupFloat(scope, "finalTime");
@@ -69,17 +73,18 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
       str = cfg->lookupString(scope, "DDPStatePenalties");
       stream.str(str);
-      for (int i = 0; i < 8; i++) stream >> mDDPStatePenalties(i);
+      for (int i = 0; i < numStates; i++) stream >> mDDPStatePenalties(i);
       stream.clear();
 
       str = cfg->lookupString(scope, "DDPTerminalStatePenalties");
       stream.str(str);
-      for (int i = 0; i < 8; i++) stream >> mDDPTerminalStatePenalties(i);
+      for (int i = 0; i < numStates; i++)
+        stream >> mDDPTerminalStatePenalties(i);
       stream.clear();
 
       str = cfg->lookupString(scope, "DDPControlPenalties");
       stream.str(str);
-      for (int i = 0; i < 2; i++) stream >> mDDPControlPenalties(i);
+      for (int i = 0; i < numControls; i++) stream >> mDDPControlPenalties(i);
       stream.clear();
 
       mBeginStep = cfg->lookupInt(scope, "beginStep");
@@ -90,17 +95,18 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
       str = cfg->lookupString(scope, "MPCStatePenalties");
       stream.str(str);
-      for (int i = 0; i < 8; i++) stream >> mMPCStatePenalties(i);
+      for (int i = 0; i < numStates; i++) stream >> mMPCStatePenalties(i);
       stream.clear();
 
       str = cfg->lookupString(scope, "MPCTerminalStatePenalties");
       stream.str(str);
-      for (int i = 0; i < 8; i++) stream >> mMPCTerminalStatePenalties(i);
+      for (int i = 0; i < numStates; i++)
+        stream >> mMPCTerminalStatePenalties(i);
       stream.clear();
 
       str = cfg->lookupString(scope, "MPCControlPenalties");
       stream.str(str);
-      for (int i = 0; i < 2; i++) stream >> mMPCControlPenalties(i);
+      for (int i = 0; i < numControls; i++) stream >> mMPCControlPenalties(i);
       stream.clear();
 
       str = cfg->lookupString(scope, "tauLim");
@@ -168,7 +174,8 @@ class MyWindow : public dart::gui::glut::SimWindow {
     double psi, qBody1;
     Eigen::Transform<double, 3, Eigen::Affine> baseTf;
     Eigen::AngleAxisd aa;
-    Eigen::VectorXd q(25);
+
+    Eigen::VectorXd q(numDof);
 
     baseRot = mkrang->getBodyNode("Base")->getTransform().rotation();
     psi = atan2(baseRot(0, 0), -baseRot(1, 0));
@@ -191,7 +198,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
     mSteps = 0;
     mMPCSteps = -1;
     mMPCdt = 0.01;
-    mdqFilt = new filter(8, 50);
+    mdqFilt = new filter(numStates, 50);
     mR = 0.25;
     mL = 0.68;  //*6;
     char mpctrajfile[] = "mpc_traj.csv";
@@ -298,6 +305,12 @@ class MyWindow : public dart::gui::glut::SimWindow {
   Eigen::VectorXd mMPCTerminalStatePenalties;
   Eigen::VectorXd mMPCControlPenalties;
   double mthref, mdthref;
+
+  int numBodyLinks;
+  int numControls;
+  int numStates;
+
+  int numDof;
 
   // Camera motion
   Eigen::Matrix3d mTrackBallRot;
@@ -779,8 +792,8 @@ void MyWindow::getSimple(dart::dynamics::SkeletonPtr& threeDOF,
       krang->getBodyNode("Base")->getTransform().rotation();
   baseRot = baseRot * rot.transpose();
   Eigen::AngleAxisd aa(baseRot);
-  Eigen::VectorXd q(8);
-  Eigen::VectorXd dq(8);
+  Eigen::VectorXd q(numStates);
+  Eigen::VectorXd dq(numStates);
   q << aa.angle() * aa.axis(), krang->getPositions().segment(3, 5);
   threeDOF->setPositions(q);
 
@@ -797,9 +810,9 @@ Krang3D<double>::State MyWindow::getCurrentState() {
   Eigen::Matrix<double, 4, 4> Tf;
   double psi, qBody1, dpsi, dpsiFilt, dqBody1, dqBody1Filt, thL, dthL, dthLFilt,
       thR, dthR, dthRFilt;
-  Eigen::VectorXd q(8);
-  Eigen::VectorXd dq_orig(8);
-  Eigen::VectorXd dq(8);
+  Eigen::VectorXd q(numStates);
+  Eigen::VectorXd dq_orig(numStates);
+  Eigen::VectorXd dq(numStates);
   State currentState = Dynamics::State::Zero();
 
   // Read Positions, Speeds, Transform speeds to world coordinates and filter
@@ -896,7 +909,7 @@ void MyWindow::computeDDPTrajectory() {
   // Dynamics::State xf; xf << 2, 0, 0, 0, 0, 0, 0.01, 5;
   // Dynamics::State xf; xf << 5, 0, 0, 0, 0, 0, 5, 0;
   Dynamics::ControlTrajectory u =
-      Dynamics::ControlTrajectory::Zero(2, time_steps);
+      Dynamics::ControlTrajectory::Zero(numControls, time_steps);
 
   // Costs
   Cost::StateHessian Q;
@@ -986,9 +999,9 @@ void MyWindow::timeStepping() {
     Dynamics::State target_state;
     target_state = mDDPStateTraj.col(mMPCSteps + mpc_horizon);
     Dynamics::ControlTrajectory hor_control =
-        Dynamics::ControlTrajectory::Zero(2, mpc_horizon);
+        Dynamics::ControlTrajectory::Zero(numControls, mpc_horizon);
     Dynamics::StateTrajectory hor_traj_states =
-        mDDPStateTraj.block(0, mMPCSteps, 8, mpc_horizon);
+        mDDPStateTraj.block(0, mMPCSteps, numStates, mpc_horizon);
 
     DDP_Opt ddp_horizon(mMPCdt, mpc_horizon, max_iterations, &logger, verbose);
 
@@ -1203,7 +1216,19 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   std::ifstream file;
   char line[1024];
   std::istringstream stream;
-  Eigen::VectorXd initPoseParams(24);
+
+  char fullpath[1024];
+
+  // copy path to local variable
+  strcpy(fullpath, urdfpath);
+
+  // Load the Skeleton from a file
+  krang = loader.parseSkeleton(strcat(fullpath, "/Krang/KrangOld.urdf"));
+  krang->setName("krang");
+
+  int numDof = krang->getNumDofs();
+
+  Eigen::VectorXd initPoseParams(numDof - 1);
   initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0, 0.0, -4.2976, 0.053232,
       -0.0575697, -1.36631, -0.495357, 0.969689, -1.55801, -0.421576, -1.27307,
       -1.35663, 1.2217, 0.606397, -0.91889, 1.50091, 0.516969, 1.31059,
@@ -1217,15 +1242,8 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   Eigen::VectorXd qRightArmInit(7);
   Eigen::Transform<double, 3, Eigen::Affine> baseTf;
   Eigen::AngleAxisd aa;
-  Eigen::VectorXd q(25);
-  char fullpath[1024];
+  Eigen::VectorXd q(numDof);
 
-  // copy path to local variable
-  strcpy(fullpath, urdfpath);
-
-  // Load the Skeleton from a file
-  krang = loader.parseSkeleton(strcat(fullpath, "/Krang/KrangOld.urdf"));
-  krang->setName("krang");
 
   // Read initial pose from the file
   file = std::ifstream("../../src/defaultInit.txt");
@@ -1233,7 +1251,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   file.getline(line, 1024);
   stream = std::istringstream(line);
   i = 0;
-  while ((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
+  while ((i < numDof - 1) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
   file.close();
   headingInit = initPoseParams(0);
   qBaseInit = initPoseParams(1);
