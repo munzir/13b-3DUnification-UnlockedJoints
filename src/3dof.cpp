@@ -38,6 +38,15 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::istringstream stream;
     double newDouble;
 
+    mTauLim = Eigen::VectorXd(18);
+    mForces = Eigen::VectorXd(2);
+    mDDPStatePenalties = Eigen::VectorXd(8);
+    mDDPTerminalStatePenalties = Eigen::VectorXd(8);
+    mDDPControlPenalties       = Eigen::VectorXd(2);
+    mMPCStatePenalties         = Eigen::VectorXd(8);
+    mMPCTerminalStatePenalties = Eigen::VectorXd(8);
+    mMPCControlPenalties       = Eigen::VectorXd(2);
+
     try {
       cfg->parse(configFile);
 
@@ -157,7 +166,8 @@ class MyWindow : public dart::gui::glut::SimWindow {
     double psi, qBody1;
     Eigen::Transform<double, 3, Eigen::Affine> baseTf;
     Eigen::AngleAxisd aa;
-    Eigen::Matrix<double, 25, 1> q;
+    Eigen::VectorXd q(25);
+
     baseRot = mkrang->getBodyNode("Base")->getTransform().rotation();
     psi = atan2(baseRot(0, 0), -baseRot(1, 0));
     qBody1 = atan2(baseRot(2, 2), baseRot(2, 1));
@@ -190,6 +200,8 @@ class MyWindow : public dart::gui::glut::SimWindow {
     mController = new Controller(mkrang, mkrang->getBodyNode("lGripper"),
                                  mkrang->getBodyNode("rGripper"));
 
+    std::cout << "Do we create a controller?" << std::endl;
+
     // Targets for the controller
     // baseTf = mController->mRobot->getBodyNode(0)->getTransform();
     // double psi =  atan2(baseTf(0,0), -baseTf(1,0));
@@ -215,6 +227,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
         0.895989, 0.887415, -0.267292, 0.375566;
     mTrackBall.setQuaternion(Eigen::Quaterniond(mTrackBallRot));
     mZoom = 0.25;
+
   }
 
   void drawWorld() const override;
@@ -251,13 +264,13 @@ class MyWindow : public dart::gui::glut::SimWindow {
   Eigen::Vector3d mRightTargetRPY;
   double mInitCOMAngle;
   bool mLockedJoints;
-  Eigen::Matrix<double, 18, 1> mTauLim;
+  Eigen::VectorXd mTauLim;
   bool mWaistLocked;
 
   // 3DOF robot
   dart::simulation::WorldPtr mWorld3dof;
   dart::dynamics::SkeletonPtr m3DOF;
-  Eigen::Matrix<double, 2, 1> mForces;
+  Eigen::VectorXd mForces;
 
   // MPC DDP states
   // double psi, dpsi, qBody1, dqBody1, dthL, dthR;
@@ -277,14 +290,14 @@ class MyWindow : public dart::gui::glut::SimWindow {
   State mGoalState;
   double mFinalTime;
   int mDDPMaxIter;
-  Eigen::Matrix<double, 8, 1> mDDPStatePenalties;
-  Eigen::Matrix<double, 8, 1> mDDPTerminalStatePenalties;
-  Eigen::Matrix<double, 2, 1> mDDPControlPenalties;
+  Eigen::VectorXd mDDPStatePenalties;
+  Eigen::VectorXd mDDPTerminalStatePenalties;
+  Eigen::VectorXd mDDPControlPenalties;
   int mMPCMaxIter;
   int mMPCHorizon;
-  Eigen::Matrix<double, 8, 1> mMPCStatePenalties;
-  Eigen::Matrix<double, 8, 1> mMPCTerminalStatePenalties;
-  Eigen::Matrix<double, 2, 1> mMPCControlPenalties;
+  Eigen::VectorXd mMPCStatePenalties;
+  Eigen::VectorXd mMPCTerminalStatePenalties;
+  Eigen::VectorXd mMPCControlPenalties;
   double mthref, mdthref;
 
   // Camera motion
@@ -767,7 +780,8 @@ void MyWindow::getSimple(dart::dynamics::SkeletonPtr& threeDOF,
       krang->getBodyNode("Base")->getTransform().rotation();
   baseRot = baseRot * rot.transpose();
   Eigen::AngleAxisd aa(baseRot);
-  Eigen::Matrix<double, 8, 1> q, dq;
+  Eigen::VectorXd q(8);
+  Eigen::VectorXd dq(8);
   q << aa.angle() * aa.axis(), krang->getPositions().segment(3, 5);
   threeDOF->setPositions(q);
 
@@ -784,7 +798,9 @@ Krang3D<double>::State MyWindow::getCurrentState() {
   Eigen::Matrix<double, 4, 4> Tf;
   double psi, qBody1, dpsi, dpsiFilt, dqBody1, dqBody1Filt, thL, dthL, dthLFilt,
       thR, dthR, dthRFilt;
-  Eigen::Matrix<double, 8, 1> q, dq_orig, dq;
+  Eigen::VectorXd q(8);
+  Eigen::VectorXd dq_orig(8);
+  Eigen::VectorXd dq(8);
   State currentState = Dynamics::State::Zero();
 
   // Read Positions, Speeds, Transform speeds to world coordinates and filter
@@ -910,6 +926,8 @@ void MyWindow::computeDDPTrajectory() {
   mDDPControlTraj = DDP_traj.control_trajectory;
 
   writer.save_trajectory(mDDPStateTraj, mDDPControlTraj, "initial_traj.csv");
+
+  std::cout << "Do we pass DDP stuff?" << std::endl;
 }
 
 //==============================================================================
@@ -1188,7 +1206,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   std::ifstream file;
   char line[1024];
   std::istringstream stream;
-  Eigen::Matrix<double, 24, 1> initPoseParams;
+  Eigen::VectorXd initPoseParams(24);
   initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0, 0.0, -4.2976, 0.053232,
       -0.0575697, -1.36631, -0.495357, 0.969689, -1.55801, -0.421576, -1.27307,
       -1.35663, 1.2217, 0.606397, -0.91889, 1.50091, 0.516969, 1.31059,
@@ -1198,11 +1216,11 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   double newDouble, headingInit, qBaseInit, qLWheelInit, qRWheelInit,
       qWaistInit, qTorsoInit, qKinectInit, th;
   Eigen::Vector3d xyzInit, COM;
-  Eigen::Matrix<double, 7, 1> qLeftArmInit;
-  Eigen::Matrix<double, 7, 1> qRightArmInit;
+  Eigen::VectorXd qLeftArmInit(7);
+  Eigen::VectorXd qRightArmInit(7);
   Eigen::Transform<double, 3, Eigen::Affine> baseTf;
   Eigen::AngleAxisd aa;
-  Eigen::Matrix<double, 25, 1> q;
+  Eigen::VectorXd q(25);
   char fullpath[1024];
 
   // copy path to local variable
@@ -1271,7 +1289,7 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee,
                                        const char* urdfpath) {
   Eigen::Matrix3d EELRot, trayLocalRot, trayRot;
   Eigen::Vector3d EELPos, trayLocalTranslation, trayPos;
-  Eigen::Matrix<double, 6, 1> qObject;
+  Eigen::VectorXd qObject(6);
   char fullpath[1024];
 
   // copy path to local variable
@@ -1306,7 +1324,7 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee,
                                       const char* urdfpath) {
   Eigen::Matrix3d EELRot, cupLocalRot, cupRot;
   Eigen::Vector3d EELPos, cupLocalTranslation, cupPos;
-  Eigen::Matrix<double, 6, 1> qObject;
+  Eigen::VectorXd qObject(6);
   char fullpath[1024];
 
   // copy path to local variable

@@ -59,20 +59,80 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   assert(_LeftendEffector != nullptr);
   assert(_RightendEffector != nullptr);
 
-  currLow << -9.5, -9.5, -7.5, -7.5, -5.5, -5.5, -5.5;
-  currHigh << 9.5, 9.5, 7.5, 7.5, 5.5, 5.5, 5.5;
-
   int dof = mRobot->getNumDofs();
   // std::cout << "[controller] DoF: " << dof << std::endl;
 
+  mForces = Eigen::VectorXd(19);
   mForces.setZero(19);
+
+  mRotorInertia = Eigen::MatrixXd(7,7);
+  mViscousFriction = Eigen::MatrixXd(7,7);
+  mCoulombFriction = Eigen::MatrixXd(7,7);
+
+  mKvJoint = Eigen::MatrixXd(7,7);
   mKvJoint.setZero();
+
+  currLow = Eigen::VectorXd(7);
+  currHigh = Eigen::VectorXd(7);
+
+  currLow << -9.5, -9.5, -7.5, -7.5, -5.5, -5.5, -5.5;
+  currHigh << 9.5, 9.5, 7.5, 7.5, 5.5, 5.5, 5.5;
+
+  torqueLow = Eigen::VectorXd(7);
+  torqueHigh = Eigen::VectorXd(7);
+
+  dqL = Eigen::VectorXd(7);
+  dqR = Eigen::VectorXd(7);
+
+  opt_torque_cmdL = Eigen::VectorXd(7);
+  opt_torque_cmdR = Eigen::VectorXd(7);
+
+  lmtd_torque_cmdL = Eigen::VectorXd(7);
+  lmtd_torque_cmdR = Eigen::VectorXd(7);
+
+  mqBodyInit = Eigen::VectorXd(18);
+
+  mWMatPose = Eigen::MatrixXd(18,18);
+  mWMatSpeedReg = Eigen::MatrixXd(18,18);
+  mWMatReg = Eigen::MatrixXd(18,18);
+
+  mBaseTf = Eigen::MatrixXd(4,4);
+  mq = Eigen::VectorXd(25);
+
+  mqBody = Eigen::VectorXd(18);
+
+  mdq = Eigen::VectorXd(25);
+
+  mdqBody = Eigen::VectorXd(18);
+  mdqMin = Eigen::VectorXd(20);
+
+  mJtf = Eigen::MatrixXd(25,20);
+  mdJtf = Eigen::MatrixXd(25,20);
+
+  mPEEL = Eigen::MatrixXd(3,18);
+  mPOrL = Eigen::MatrixXd(3,18);
+  mPEER = Eigen::MatrixXd(3,18);
+  mPOrR = Eigen::MatrixXd(3,18);
+  mbEEL = Eigen::VectorXd(3,1);
+  mbOrL = Eigen::VectorXd(3,1);
+  mbEER = Eigen::VectorXd(3,1);
+  mbOrR = Eigen::VectorXd(3,1);
+
+  mPPose = Eigen::MatrixXd(18,18);
+  mPSpeedReg = Eigen::MatrixXd(18,18);
+  mPReg = Eigen::MatrixXd(18,18);
+  mbPose = Eigen::VectorXd(18);
+  mbSpeedReg = Eigen::VectorXd(18);
+  mbReg = Eigen::VectorXd(18);
+
+  mZeroCol = Eigen::VectorXd(3);
+  mZero7Col = Eigen::MatrixXd(3,7);
 
   mSteps = 0;
 
   // *************** Read Initial Pose for Pose Regulation and Generate
   // reference zCOM
-  Eigen::Matrix<double, 25, 1> qInit;
+  Eigen::VectorXd qInit(25);
   Eigen::Matrix3d Rot0;
   qInit = mRobot->getPositions();
   mBaseTf = mRobot->getBodyNode(0)->getTransform().matrix();
@@ -113,7 +173,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   const char* str;
   std::istringstream stream;
   double newDouble;
-  Eigen::Matrix<double, 18, 1> tauLim;
+  Eigen::VectorXd tauLim(18);
 
   mKpEE.setZero();
   mKvEE.setZero();
@@ -265,14 +325,19 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   }
 
   // *********************************** Transform Jacobians
-  mJtf.topRightCorner(8, 17) = Eigen::Matrix<double, 8, 17>::Zero();
-  mJtf.bottomLeftCorner(17, 3) = Eigen::Matrix<double, 17, 3>::Zero();
-  mJtf.bottomRightCorner(17, 17) = Eigen::Matrix<double, 17, 17>::Identity();
+
+  mJtf.topRightCorner(8, 17) = Eigen::MatrixXd::Zero(8,17);
+  mJtf.bottomLeftCorner(17, 3) = Eigen::MatrixXd::Zero(17,3);
+  mJtf.bottomRightCorner(17, 17) = Eigen::MatrixXd::Identity(17, 17);
+
+
   mdJtf.setZero();
 
   // ******************************** zero Cols
   mZeroCol.setZero();
   mZero7Col.setZero();
+
+
 
   Eigen::MatrixXd beta = readInputFileAsMatrix(
       "../../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
@@ -383,7 +448,7 @@ void Controller::updateTransformJacobian() {
   // dq8 = dq_2
   // dq9 = dq_3
   // [dq0 dq1 dq2 dq3 dq4 dq5 dq6 dq7]' = J*[dx dpsi dq_1]';
-  // where
+  // w
 
   mJtf.topLeftCorner(8, 3) << 0, 0, -1, 0, cos(mqBody1), 0, 0, sin(mqBody1), 0,
       0, 0, 0, sin(mqBody1), 0, 0, -cos(mqBody1), 0, 0, 1 / mR, -mL / (2 * mR),
@@ -413,9 +478,9 @@ void Controller::updateTransformJacobian() {
 void Controller::setLeftArmOptParams(
     const Eigen::Vector3d& _LeftTargetPosition) {
   static Eigen::Vector3d xEELref, xEEL, dxEEL, ddxEELref, dxref;
-  static Eigen::Matrix<double, 3, 15> JEEL_small, dJEEL_small;
-  static Eigen::Matrix<double, 3, 25> JEEL_full, dJEEL_full;
-  static Eigen::Matrix<double, 3, 18> JEEL, dJEEL;
+  static Eigen::MatrixXd JEEL_small(3,15), dJEEL_small(3,15);
+  static Eigen::MatrixXd JEEL_full(3,25), dJEEL_full(3,25);
+  static Eigen::MatrixXd JEEL(3,18), dJEEL(3,18);
 
   xEELref = _LeftTargetPosition;
   if (mSteps == 1) {
@@ -463,9 +528,9 @@ void Controller::setLeftArmOptParams(
 void Controller::setRightArmOptParams(
     const Eigen::Vector3d& _RightTargetPosition) {
   static Eigen::Vector3d xEERref, xEER, dxEER, ddxEERref, dxref;
-  static Eigen::Matrix<double, 3, 15> JEER_small, dJEER_small;
-  static Eigen::Matrix<double, 3, 25> JEER_full, dJEER_full;
-  static Eigen::Matrix<double, 3, 18> JEER, dJEER;
+  static Eigen::MatrixXd JEER_small(3,15), dJEER_small(3,15);
+  static Eigen::MatrixXd JEER_full(3,25), dJEER_full(3,25);
+  static Eigen::MatrixXd JEER(3,18), dJEER(3,18);
 
   xEERref = _RightTargetPosition;
   if (mSteps == 1) {
@@ -780,11 +845,14 @@ void Controller::setRegulationOptParams() {
 
 //==============================================================================
 void Controller::computeDynamics() {
-  static Eigen::Matrix<double, 25, 25> M_full;
-  static Eigen::Matrix<double, 20, 20> M;
-  static Eigen::Matrix<double, 20, 1> h;
-  static Eigen::Matrix<double, 19, 1> h_without_psi_equation;
+  static Eigen::MatrixXd M_full(25, 25);
+  static Eigen::MatrixXd M(20, 20);
+  static Eigen::VectorXd h(20);
+  static Eigen::VectorXd h_without_psi_equation(19);
   static double axx, alpha, beta;
+  //static Eigen::Matrix<double, 18, 1> axq, hh;
+  //static Eigen::Matrix<double, 18, 19> PP;
+  //static Eigen::Matrix<double, 18, 18> Aqq, A_qq, B, pre, MM;
   static Eigen::Matrix<double, 18, 1> axq, hh;
   static Eigen::Matrix<double, 18, 19> PP;
   static Eigen::Matrix<double, 18, 18> Aqq, A_qq, B, pre, MM;
@@ -803,8 +871,10 @@ void Controller::computeDynamics() {
   alpha = axq(0) / (mR * axx);
   beta = 1 / (1 + alpha);
   A_qq = Aqq - (1 / axx) * (axq * axq.transpose());  // AqqSTAR in derivation
-  B << axq / (mR * axx), Eigen::Matrix<double, 18, 17>::Zero();
-  pre = Eigen::Matrix<double, 18, 18>::Identity() - beta * B;
+  //B << axq / (mR * axx), Eigen::Matrix<double, 18, 17>::Zero();
+  //pre = Eigen::Matrix<double, 18, 18>::Identity() - beta * B;
+  B << axq / (mR * axx), Eigen::MatrixXd::Zero(18,17);
+  pre = Eigen::MatrixXd::Identity(18,18) - beta * B;
   PP << -pre * axq / axx, pre;
   MM = pre * A_qq;
   hh = PP * h_without_psi_equation;

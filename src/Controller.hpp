@@ -102,27 +102,27 @@ class Controller {
   dart::dynamics::BodyNode* mRightEndEffector;
 
   /// \brief Control forces
-  Eigen::Matrix<double, 19, 1> mForces;
+  Eigen::VectorXd mForces;
 
-  Eigen::Matrix<double, 7, 7> mRotorInertia, mViscousFriction, mCoulombFriction;
+  Eigen::MatrixXd mRotorInertia, mViscousFriction, mCoulombFriction;
 
-  Eigen::Matrix<double, 7, 7> mKvJoint;
+  Eigen::MatrixXd mKvJoint;
 
   double mKm_array[7] = {31.4e-3, 31.4e-3, 38e-3, 38e-3, 16e-3, 16e-3, 16e-3};
   double mGR_array[7] = {596, 596, 625, 625, 552, 552, 552};
-  Eigen::Matrix<double, 7, 1> currLow;
-  Eigen::Matrix<double, 7, 1> currHigh;
-  Eigen::Matrix<double, 7, 1> torqueLow;
-  Eigen::Matrix<double, 7, 1> torqueHigh;
+  Eigen::VectorXd currLow;
+  Eigen::VectorXd currHigh;
+  Eigen::VectorXd torqueLow;
+  Eigen::VectorXd torqueHigh;
 
-  Eigen::Matrix<double, 7, 1> dqL;
-  Eigen::Matrix<double, 7, 1> dqR;
+  Eigen::VectorXd dqL;
+  Eigen::VectorXd dqR;
 
-  Eigen::Matrix<double, 7, 1> opt_torque_cmdL;
-  Eigen::Matrix<double, 7, 1> opt_torque_cmdR;
+  Eigen::VectorXd opt_torque_cmdL;
+  Eigen::VectorXd opt_torque_cmdR;
 
-  Eigen::Matrix<double, 7, 1> lmtd_torque_cmdL;
-  Eigen::Matrix<double, 7, 1> lmtd_torque_cmdR;
+  Eigen::VectorXd lmtd_torque_cmdL;
+  Eigen::VectorXd lmtd_torque_cmdR;
 
   size_t mSteps;
 
@@ -130,7 +130,7 @@ class Controller {
 
   double mInitCOMDistance;
 
-  Eigen::Matrix<double, 18, 1> mqBodyInit;
+  Eigen::VectorXd mqBodyInit;
 
   filter* mdqFilt;
 
@@ -144,38 +144,39 @@ class Controller {
 
   double mWOrR, mWOrL, mWSpeedReg, mWReg, mWPose;
   Eigen::Matrix3d mWBal, mWEER, mWEEL;
-  Eigen::Matrix<double, 18, 18> mWMatPose;
-  Eigen::Matrix<double, 18, 18> mWMatSpeedReg;
-  Eigen::Matrix<double, 18, 18> mWMatReg;
+  Eigen::MatrixXd mWMatPose;
+  Eigen::MatrixXd mWMatSpeedReg;
+  Eigen::MatrixXd mWMatReg;
 
-  Eigen::Matrix<double, 4, 4> mBaseTf;
-  Eigen::Matrix<double, 25, 1> mq;
+  Eigen::MatrixXd mBaseTf;
+  Eigen::VectorXd mq;
+
   Eigen::Vector3d mxyz0;  // position of frame 0 in the world frame represented
                           // in the world frame
   double mpsi;
   double mqBody1;
-  Eigen::Matrix<double, 18, 1> mqBody;
+  Eigen::VectorXd mqBody;
 
-  Eigen::Matrix<double, 25, 1> mdq;
+  Eigen::VectorXd mdq;
   Eigen::Vector3d mdxyz0;
   double mdx, mdqBody1, mdpsi;
-  Eigen::Matrix<double, 18, 1> mdqBody;
-  Eigen::Matrix<double, 20, 1> mdqMin;
+  Eigen::VectorXd mdqBody;
+  Eigen::VectorXd mdqMin;
 
   Eigen::Matrix3d mRot0, mdRot0;
 
-  Eigen::Matrix<double, 25, 20> mJtf, mdJtf;
+  Eigen::MatrixXd mJtf, mdJtf;
 
-  Eigen::Matrix<double, 3, 18> mPEEL, mPOrL, mPEER, mPOrR;
-  Eigen::Matrix<double, 3, 1> mbEEL, mbOrL, mbEER, mbOrR;
+  Eigen::MatrixXd mPEEL, mPOrL, mPEER, mPOrR;
+  Eigen::VectorXd mbEEL, mbOrL, mbEER, mbOrR;
   Eigen::MatrixXd mPBal;
   Eigen::VectorXd mbBal;
-  Eigen::Matrix<double, 18, 18> mPPose, mPSpeedReg, mPReg;
-  Eigen::Matrix<double, 18, 1> mbPose, mbSpeedReg, mbReg;
+  Eigen::MatrixXd mPPose, mPSpeedReg, mPReg;
+  Eigen::VectorXd mbPose, mbSpeedReg, mbReg;
   bool mCOMAngleControl, mMaintainInitCOMDistance;
 
-  Eigen::Matrix<double, 3, 1> mZeroCol;
-  Eigen::Matrix<double, 3, 7> mZero7Col;
+  Eigen::VectorXd mZeroCol;
+  Eigen::MatrixXd mZero7Col;
 
   Eigen::MatrixXd mMM;
   Eigen::VectorXd mhh;
