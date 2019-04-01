@@ -25,24 +25,24 @@ struct OptParams {
 // Eigen::MatrixXd iddefinePReg();
 
 // // Define P for QP
-Eigen::MatrixXd iddefineP(Eigen::Matrix<double, 3, 18> mPEER,
-                          Eigen::Matrix<double, 3, 18> mPOrR,
-                          Eigen::Matrix<double, 3, 18> mPEEL,
-                          Eigen::Matrix<double, 3, 18> mPOrL,
+Eigen::MatrixXd iddefineP(Eigen::MatrixXd mPEER,
+                          Eigen::MatrixXd mPOrR,
+                          Eigen::MatrixXd mPEEL,
+                          Eigen::MatrixXd mPOrL,
                           Eigen::VectorXd mPBal,
-                          Eigen::Matrix<double, 18, 18> mPPose,
-                          Eigen::Matrix<double, 18, 18> mPSpeedReg,
-                          Eigen::Matrix<double, 18, 18> mPReg, int mOptDim);
+                          Eigen::MatrixXd mPPose,
+                          Eigen::MatrixXd mPSpeedReg,
+                          Eigen::MatrixXd mPReg, int mOptDim);
 
 // // Define b for QP
-Eigen::MatrixXd iddefineb(Eigen::Matrix<double, 3, 1> mbEER,
-                          Eigen::Matrix<double, 3, 1> mbOrR,
-                          Eigen::Matrix<double, 3, 1> mbEEL,
-                          Eigen::Matrix<double, 3, 1> mbOrL,
+Eigen::MatrixXd iddefineb(Eigen::MatrixXd mbEER,
+                          Eigen::MatrixXd mbOrR,
+                          Eigen::MatrixXd mbEEL,
+                          Eigen::MatrixXd mbOrL,
                           Eigen::VectorXd mbBal,
-                          Eigen::Matrix<double, 18, 1> mbPose,
-                          Eigen::Matrix<double, 18, 1> mbSpeedReg,
-                          Eigen::Matrix<double, 18, 1> mbReg);
+                          Eigen::MatrixXd mbPose,
+                          Eigen::MatrixXd mbSpeedReg,
+                          Eigen::MatrixXd mbReg);
 
 // // opt function
 double optFunc(const std::vector<double>& x, std::vector<double>& grad,
