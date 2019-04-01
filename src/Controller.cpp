@@ -1,15 +1,3 @@
-// To-Do
-// *- Read from Beta?
-// *- Set Frictions
-// *- Set Velocites for 3x1 block in PID section? (What is this - it is for
-// base->torso)
-//	- Compare gain values and add/delete accordingly
-// *- Check PID equations
-//	- Check that Speed Reg is not used in working 27
-
-// Things I did
-// removed extra damping coefficient set in line 93
-
 /*
  * Copyright (c) 2014-2016, Humanoid Lab, Georgia Tech Research Corporation
  * Copyright (c) 2014-2017, Graphics Lab, Georgia Tech Research Corporation
@@ -41,8 +29,19 @@
  *   POSSIBILITY OF SUCH DAMAGE.
  */
 
+// To-Do
+// *- Read from Beta?
+// *- Set Frictions
+// *- Set Velocites for 3x1 block in PID section? (What is this - it is for
+// base->torso)
+//	- Compare gain values and add/delete accordingly
+// *- Check PID equations
+//	- Check that Speed Reg is not used in working 27
+
+// Things I did
+// removed extra damping coefficient set in line 93
+
 #include <krang-utils/file_ops.hpp>
-#include <nlopt.hpp>
 
 #include "Controller.hpp"
 #include "id.hpp"
@@ -580,9 +579,9 @@ void Controller::setLeftOrientationOptParams(
   static Eigen::Quaterniond quatRef, quat;
   static double quatRef_w, quat_w;
   static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref, wref;
-  static Eigen::Matrix<double, 3, 15> JwL_small, dJwL_small;
-  static Eigen::Matrix<double, 3, 25> JwL_full, dJwL_full;
-  static Eigen::Matrix<double, 3, 18> JwL, dJwL;
+  static Eigen::MatrixXd JwL_small(3,15), dJwL_small(3,15);
+  static Eigen::MatrixXd JwL_full(3,25), dJwL_full(3,25);
+  static Eigen::MatrixXd JwL(3,18), dJwL(3,18);
 
   // Reference orientation (TargetRPY is assumed to be in Frame 0)
   quatRef = Eigen::Quaterniond(
@@ -656,9 +655,9 @@ void Controller::setRightOrientationOptParams(
   static Eigen::Quaterniond quatRef, quat;
   static double quatRef_w, quat_w;
   static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref, wref;
-  static Eigen::Matrix<double, 3, 15> JwR_small, dJwR_small;
-  static Eigen::Matrix<double, 3, 25> JwR_full, dJwR_full;
-  static Eigen::Matrix<double, 3, 18> JwR, dJwR;
+  static Eigen::MatrixXd JwR_small(3,15), dJwR_small(3,15);
+  static Eigen::MatrixXd JwR_full(3,25), dJwR_full(3,25);
+  static Eigen::MatrixXd JwR(3,18), dJwR(3,18);
 
   // Reference orientation (TargetRPY is assumed to be in Frame 0)
   quatRef = Eigen::Quaterniond(
@@ -731,10 +730,10 @@ void Controller::setBalanceOptParams(double thref, double dthref,
                                      double ddthref) {
   static Eigen::Vector3d COM, dCOM, COMref, dCOMref, ddCOMref, ddCOMStar,
       dCOMStar;
-  static Eigen::Matrix<double, 3, 25> JCOM_full, dJCOM_full;
-  static Eigen::Matrix<double, 3, 18> JCOM, dJCOM;
-  static Eigen::Matrix<double, 1, 18> Jth, dJth;
-  static Eigen::Matrix<double, 1, 3> thVec, dthVec;
+  static Eigen::MatrixXd JCOM_full(3, 25), dJCOM_full(3,25);
+  static Eigen::MatrixXd JCOM(3,18), dJCOM(3,18);
+  static Eigen::VectorXd Jth(18), dJth(18);
+  static Eigen::VectorXd thVec(3), dthVec(3);
   static double L, th, th_wrong, dth, ddthStar, dthStar;
 
   //*********************************** Balance
@@ -801,7 +800,9 @@ void Controller::setBalanceOptParams(double thref, double dthref,
     if (mCOMAngleControl) {
       mPBal << mWBal(0, 0) * Jth;
       mbBal << mWBal(0, 0) *
-                   (-dJth * mdqBody + (mCOMPDControl ? ddthStar : ddthref));
+                   ((-dJth * mdqBody)(0) + (mCOMPDControl ? ddthStar : ddthref));
+      //mbBal << mWBal(0, 0) *
+      //             (-dJth * mdqBody + (mCOMPDControl ? ddthStar : ddthref));
     } else {
       mPBal << mWBal * JCOM;
       mbBal << mWBal *
@@ -850,12 +851,9 @@ void Controller::computeDynamics() {
   static Eigen::VectorXd h(20);
   static Eigen::VectorXd h_without_psi_equation(19);
   static double axx, alpha, beta;
-  //static Eigen::Matrix<double, 18, 1> axq, hh;
-  //static Eigen::Matrix<double, 18, 19> PP;
-  //static Eigen::Matrix<double, 18, 18> Aqq, A_qq, B, pre, MM;
-  static Eigen::Matrix<double, 18, 1> axq, hh;
-  static Eigen::Matrix<double, 18, 19> PP;
-  static Eigen::Matrix<double, 18, 18> Aqq, A_qq, B, pre, MM;
+  static Eigen::VectorXd axq(18), hh(18);
+  static Eigen::MatrixXd PP(18,19);
+  static Eigen::MatrixXd Aqq(18,18), A_qq(18,18), B(18,18), pre(18,18), MM(18,18);
 
   // ***************************** Inertia and Coriolis Matrices
   M_full = mRobot->getMassMatrix();
