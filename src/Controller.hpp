@@ -192,6 +192,16 @@ class Controller {
   bool mCOMPDControl;
 
   bool mCOMControlInLowLevel;
+
+  int numDof;
+  int numConstraints;
+  int numMinDof;
+  int numPassiveJoints;
+  int numActuators;
+  int numWheels;
+  int numBodyLinks;
+  int numArmJoints;
+  int numLowerBodyLinks;
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_

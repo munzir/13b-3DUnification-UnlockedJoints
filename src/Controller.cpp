@@ -58,80 +58,97 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   assert(_LeftendEffector != nullptr);
   assert(_RightendEffector != nullptr);
 
-  int dof = mRobot->getNumDofs();
-  // std::cout << "[controller] DoF: " << dof << std::endl;
+  numDof = mRobot->getNumDofs();
+  numConstraints = 5;
+  numMinDof = numDof - numConstraints;
+  numPassiveJoints = 6;
+  numActuators = numDof - numPassiveJoints;
+  numWheels = 2;
+  numBodyLinks = numDof - numPassiveJoints - numWheels + 1;  // +1 for the base
+  numArmJoints = 7;
+  numLowerBodyLinks = 3;  // base, waist, torso
 
-  mForces = Eigen::VectorXd(19);
-  mForces.setZero(19);
+  std::cout << "numDof:" << numDof << std::endl;
+  std::cout << "numConstraints:" << numConstraints << std::endl;
+  std::cout << "numMinDof:" << numMinDof << std::endl;
+  std::cout << "numPassiveJoints:" << numPassiveJoints << std::endl;
+  std::cout << "numActuators:" << numActuators << std::endl;
+  std::cout << "numWheels:" << numWheels << std::endl;
+  std::cout << "numBodyLinks:" << numBodyLinks << std::endl;
+  std::cout << "numArmJoints:" << numArmJoints << std::endl;
+  std::cout << "numLowerBodyLinks:" << numLowerBodyLinks << std::endl;
 
-  mRotorInertia = Eigen::MatrixXd(7,7);
-  mViscousFriction = Eigen::MatrixXd(7,7);
-  mCoulombFriction = Eigen::MatrixXd(7,7);
+  mForces = Eigen::VectorXd(numActuators);
+  mForces.setZero(numActuators);
 
-  mKvJoint = Eigen::MatrixXd(7,7);
+  mRotorInertia = Eigen::MatrixXd(numArmJoints, numArmJoints);
+  mViscousFriction = Eigen::MatrixXd(numArmJoints, numArmJoints);
+  mCoulombFriction = Eigen::MatrixXd(numArmJoints, numArmJoints);
+
+  mKvJoint = Eigen::MatrixXd(numArmJoints, numArmJoints);
   mKvJoint.setZero();
 
-  currLow = Eigen::VectorXd(7);
-  currHigh = Eigen::VectorXd(7);
+  currLow = Eigen::VectorXd(numArmJoints);
+  currHigh = Eigen::VectorXd(numArmJoints);
 
   currLow << -9.5, -9.5, -7.5, -7.5, -5.5, -5.5, -5.5;
   currHigh << 9.5, 9.5, 7.5, 7.5, 5.5, 5.5, 5.5;
 
-  torqueLow = Eigen::VectorXd(7);
-  torqueHigh = Eigen::VectorXd(7);
+  torqueLow = Eigen::VectorXd(numArmJoints);
+  torqueHigh = Eigen::VectorXd(numArmJoints);
 
-  dqL = Eigen::VectorXd(7);
-  dqR = Eigen::VectorXd(7);
+  dqL = Eigen::VectorXd(numArmJoints);
+  dqR = Eigen::VectorXd(numArmJoints);
 
-  opt_torque_cmdL = Eigen::VectorXd(7);
-  opt_torque_cmdR = Eigen::VectorXd(7);
+  opt_torque_cmdL = Eigen::VectorXd(numArmJoints);
+  opt_torque_cmdR = Eigen::VectorXd(numArmJoints);
 
-  lmtd_torque_cmdL = Eigen::VectorXd(7);
-  lmtd_torque_cmdR = Eigen::VectorXd(7);
+  lmtd_torque_cmdL = Eigen::VectorXd(numArmJoints);
+  lmtd_torque_cmdR = Eigen::VectorXd(numArmJoints);
 
-  mqBodyInit = Eigen::VectorXd(18);
+  mqBodyInit = Eigen::VectorXd(numBodyLinks);
 
-  mWMatPose = Eigen::MatrixXd(18,18);
-  mWMatSpeedReg = Eigen::MatrixXd(18,18);
-  mWMatReg = Eigen::MatrixXd(18,18);
+  mWMatPose = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
+  mWMatSpeedReg = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
+  mWMatReg = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
 
-  mBaseTf = Eigen::MatrixXd(4,4);
-  mq = Eigen::VectorXd(25);
+  mBaseTf = Eigen::MatrixXd(4, 4);
+  mq = Eigen::VectorXd(numDof);
 
-  mqBody = Eigen::VectorXd(18);
+  mqBody = Eigen::VectorXd(numBodyLinks);
 
-  mdq = Eigen::VectorXd(25);
+  mdq = Eigen::VectorXd(numDof);
 
-  mdqBody = Eigen::VectorXd(18);
-  mdqMin = Eigen::VectorXd(20);
+  mdqBody = Eigen::VectorXd(numBodyLinks);
+  mdqMin = Eigen::VectorXd(numMinDof);
 
-  mJtf = Eigen::MatrixXd(25,20);
-  mdJtf = Eigen::MatrixXd(25,20);
+  mJtf = Eigen::MatrixXd(numDof, numMinDof);
+  mdJtf = Eigen::MatrixXd(numDof, numMinDof);
 
-  mPEEL = Eigen::MatrixXd(3,18);
-  mPOrL = Eigen::MatrixXd(3,18);
-  mPEER = Eigen::MatrixXd(3,18);
-  mPOrR = Eigen::MatrixXd(3,18);
-  mbEEL = Eigen::VectorXd(3,1);
-  mbOrL = Eigen::VectorXd(3,1);
-  mbEER = Eigen::VectorXd(3,1);
-  mbOrR = Eigen::VectorXd(3,1);
+  mPEEL = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
+  mPOrL = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
+  mPEER = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
+  mPOrR = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
+  mbEEL = Eigen::VectorXd(numLowerBodyLinks);
+  mbOrL = Eigen::VectorXd(numLowerBodyLinks);
+  mbEER = Eigen::VectorXd(numLowerBodyLinks);
+  mbOrR = Eigen::VectorXd(numLowerBodyLinks);
 
-  mPPose = Eigen::MatrixXd(18,18);
-  mPSpeedReg = Eigen::MatrixXd(18,18);
-  mPReg = Eigen::MatrixXd(18,18);
-  mbPose = Eigen::VectorXd(18);
-  mbSpeedReg = Eigen::VectorXd(18);
-  mbReg = Eigen::VectorXd(18);
+  mPPose = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
+  mPSpeedReg = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
+  mPReg = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
+  mbPose = Eigen::VectorXd(numBodyLinks);
+  mbSpeedReg = Eigen::VectorXd(numBodyLinks);
+  mbReg = Eigen::VectorXd(numBodyLinks);
 
-  mZeroCol = Eigen::VectorXd(3);
-  mZero7Col = Eigen::MatrixXd(3,7);
+  mZeroCol = Eigen::VectorXd(numLowerBodyLinks);
+  mZero7Col = Eigen::MatrixXd(numLowerBodyLinks, numArmJoints);
 
   mSteps = 0;
 
   // *************** Read Initial Pose for Pose Regulation and Generate
   // reference zCOM
-  Eigen::VectorXd qInit(25);
+  Eigen::VectorXd qInit(numDof);
   Eigen::Matrix3d Rot0;
   qInit = mRobot->getPositions();
   mBaseTf = mRobot->getBodyNode(0)->getTransform().matrix();
@@ -151,16 +168,16 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mInitCOMDistance = bodyCOM.norm();
 
   // ************** Remove position limits
-  for (int i = 6; i < dof - 1; ++i)
+  for (int i = 6; i < numDof - 1; ++i)
     _robot->getJoint(i)->setPositionLimitEnforced(false);
   // std::cout << "Position Limit Enforced set to false" << std::endl;
 
   // ************** Set joint damping
-  // for(int i = 6; i < dof-1; ++i)
+  // for(int i = 6; i < numDof-1; ++i)
   //   _robot->getJoint(i)->setDampingCoefficient(0, 0.5);
   // // std::cout << "Damping coefficients set" << std::endl;
 
-  mdqFilt = new filter(25, 100);
+  mdqFilt = new filter(numDof, 100);
 
   // ************** Wheel Radius and Distance between wheels
   mR = 0.25, mL = 0.68;
@@ -172,7 +189,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   const char* str;
   std::istringstream stream;
   double newDouble;
-  Eigen::VectorXd tauLim(18);
+  Eigen::VectorXd tauLim(numBodyLinks);
 
   mKpEE.setZero();
   mKvEE.setZero();
@@ -202,7 +219,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     // -- Torque Limits
     str = cfg->lookupString(scope, "tauLim");
     stream.str(str);
-    for (int i = 0; i < 18; i++) stream >> tauLim(i);
+    for (int i = 0; i < numBodyLinks; i++) stream >> tauLim(i);
     stream.clear();
 
     // -- Gains
@@ -248,22 +265,22 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     // Balance
     str = cfg->lookupString(scope, "wBal");
     stream.str(str);
-    for (int i = 0; i < 3; i++) stream >> mWBal(i, i);
+    for (int i = 0; i < numLowerBodyLinks; i++) stream >> mWBal(i, i);
     stream.clear();
     // Regulation
     const char* s[] = {"wRegBase", "wRegWaist", "wRegTorso", "wRegKinect",
                        "wRegArm1", "wRegArm2",  "wRegArm3",  "wRegArm4",
                        "wRegArm5", "wRegArm6",  "wRegArm7"};
-    for (int i = 0; i < 11; i++) {
+    for (int i = 0; i < numLowerBodyLinks + 1 + numArmJoints; i++) {
       str = cfg->lookupString(scope, s[i]);
       stream.str(str);
       stream >> mWMatPose(i, i);
       stream >> mWMatSpeedReg(i, i);
       stream >> mWMatReg(i, i);
-      if (i > 3) {
-        mWMatPose(i + 7, i + 7) = mWMatPose(i, i);
-        mWMatSpeedReg(i + 7, i + 7) = mWMatSpeedReg(i, i);
-        mWMatReg(i + 7, i + 7) = mWMatReg(i, i);
+      if (i > numLowerBodyLinks - 1 + 1) {
+        mWMatPose(i + numArmJoints, i + numArmJoints) = mWMatPose(i, i);
+        mWMatSpeedReg(i + numArmJoints, i + numArmJoints) = mWMatSpeedReg(i, i);
+        mWMatReg(i + numArmJoints, i + numArmJoints) = mWMatReg(i, i);
       }
       stream.clear();
     }
@@ -299,13 +316,13 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // 2) << endl;
   cout << "wBal: " << mWBal.diagonal().transpose() << endl;
   cout << "wMatPoseReg: ";
-  for (int i = 0; i < 18; i++) cout << mWMatPose(i, i) << ", ";
+  for (int i = 0; i < numBodyLinks; i++) cout << mWMatPose(i, i) << ", ";
   cout << endl;
   cout << "wMatSpeedReg: ";
-  for (int i = 0; i < 18; i++) cout << mWMatSpeedReg(i, i) << ", ";
+  for (int i = 0; i < numBodyLinks; i++) cout << mWMatSpeedReg(i, i) << ", ";
   cout << endl;
   cout << "wMatReg: ";
-  for (int i = 0; i < 18; i++) cout << mWMatReg(i, i) << ", ";
+  for (int i = 0; i < numBodyLinks; i++) cout << mWMatReg(i, i) << ", ";
   cout << endl;
   cout << "waistLocked: " << (mWaistLocked ? "true" : "false") << endl;
   cout << "inverseKinematicsOnArms: "
@@ -316,27 +333,25 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
   // PBal and bBal size based on mCOMAngleControl
   if (mCOMAngleControl) {
-    mPBal = Eigen::MatrixXd::Zero(1, 18);
+    mPBal = Eigen::MatrixXd::Zero(1, numBodyLinks);
     mbBal = Eigen::VectorXd::Zero(1);
   } else {
-    mPBal = Eigen::MatrixXd::Zero(3, 18);
-    mbBal = Eigen::VectorXd::Zero(3);
+    mPBal = Eigen::MatrixXd::Zero(numLowerBodyLinks, numBodyLinks);
+    mbBal = Eigen::VectorXd::Zero(numLowerBodyLinks);
   }
 
   // *********************************** Transform Jacobians
 
-  mJtf.topRightCorner(8, 17) = Eigen::MatrixXd::Zero(8,17);
-  mJtf.bottomLeftCorner(17, 3) = Eigen::MatrixXd::Zero(17,3);
+  mJtf.topRightCorner(8, 17) = Eigen::MatrixXd::Zero(8, 17);
+  mJtf.bottomLeftCorner(17, numLowerBodyLinks) =
+      Eigen::MatrixXd::Zero(17, numLowerBodyLinks);
   mJtf.bottomRightCorner(17, 17) = Eigen::MatrixXd::Identity(17, 17);
-
 
   mdJtf.setZero();
 
   // ******************************** zero Cols
   mZeroCol.setZero();
   mZero7Col.setZero();
-
-
 
   Eigen::MatrixXd beta = readInputFileAsMatrix(
       "../../../20c-RidgeRegression_arm/betaConsistent/betaConsistent.txt");
@@ -384,9 +399,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // **************************** if waist locked, dimesion of decision variable
   // in QP should be reduced by one
   if (mWaistLocked)
-    mOptDim = 17;
+    mOptDim = numBodyLinks - 1;
   else
-    mOptDim = 18;
+    mOptDim = numBodyLinks;
   mddqBodyRef = Eigen::VectorXd::Zero(mOptDim);
   mdqBodyRef = Eigen::VectorXd::Zero(mOptDim);
   mMM = Eigen::MatrixXd::Zero(mOptDim, mOptDim);
@@ -427,7 +442,7 @@ void Controller::updateSpeeds() {
   mdqBody.tail(17) = mdq.tail(17);
   mdqMin(0) = mdx;
   mdqMin(1) = mdpsi;
-  mdqMin.tail(18) = mdqBody;
+  mdqMin.tail(numBodyLinks) = mdqBody;
   mdRot0 << (-sin(mpsi) * mdpsi), (cos(mpsi) * mdpsi), 0, (-cos(mpsi) * mdpsi),
       (-sin(mpsi) * mdpsi), 0, 0, 0, 0;
 }
@@ -449,13 +464,14 @@ void Controller::updateTransformJacobian() {
   // [dq0 dq1 dq2 dq3 dq4 dq5 dq6 dq7]' = J*[dx dpsi dq_1]';
   // w
 
-  mJtf.topLeftCorner(8, 3) << 0, 0, -1, 0, cos(mqBody1), 0, 0, sin(mqBody1), 0,
-      0, 0, 0, sin(mqBody1), 0, 0, -cos(mqBody1), 0, 0, 1 / mR, -mL / (2 * mR),
-      -1, 1 / mR, mL / (2 * mR), -1;
+  mJtf.topLeftCorner(8, numLowerBodyLinks) << 0, 0, -1, 0, cos(mqBody1), 0, 0,
+      sin(mqBody1), 0, 0, 0, 0, sin(mqBody1), 0, 0, -cos(mqBody1), 0, 0, 1 / mR,
+      -mL / (2 * mR), -1, 1 / mR, mL / (2 * mR), -1;
 
-  mdJtf.topLeftCorner(8, 3) << 0, 0, 0, 0, -sin(mqBody1) * mdqBody1, 0, 0,
-      cos(mqBody1) * mdqBody1, 0, 0, 0, 0, cos(mqBody1) * mdqBody1, 0, 0,
-      sin(mqBody1) * mdqBody1, 0, 0, 0, 0, 0, 0, 0, 0;
+  mdJtf.topLeftCorner(8, numLowerBodyLinks) << 0, 0, 0, 0,
+      -sin(mqBody1) * mdqBody1, 0, 0, cos(mqBody1) * mdqBody1, 0, 0, 0, 0,
+      cos(mqBody1) * mdqBody1, 0, 0, sin(mqBody1) * mdqBody1, 0, 0, 0, 0, 0, 0,
+      0, 0;
 
   if (mSteps < 0) {
     cout << "Jtf: " << endl;
@@ -477,9 +493,12 @@ void Controller::updateTransformJacobian() {
 void Controller::setLeftArmOptParams(
     const Eigen::Vector3d& _LeftTargetPosition) {
   static Eigen::Vector3d xEELref, xEEL, dxEEL, ddxEELref, dxref;
-  static Eigen::MatrixXd JEEL_small(3,15), dJEEL_small(3,15);
-  static Eigen::MatrixXd JEEL_full(3,25), dJEEL_full(3,25);
-  static Eigen::MatrixXd JEEL(3,18), dJEEL(3,18);
+  static Eigen::MatrixXd JEEL_small(numLowerBodyLinks, 15),
+      dJEEL_small(numLowerBodyLinks, 15);
+  static Eigen::MatrixXd JEEL_full(numLowerBodyLinks, numDof),
+      dJEEL_full(numLowerBodyLinks, numDof);
+  static Eigen::MatrixXd JEEL(numLowerBodyLinks, numBodyLinks),
+      dJEEL(numLowerBodyLinks, numBodyLinks);
 
   xEELref = _LeftTargetPosition;
   if (mSteps == 1) {
@@ -502,7 +521,8 @@ void Controller::setLeftArmOptParams(
   JEEL_full << JEEL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
       JEEL_small.block<3, 2>(0, 6), mZeroCol, JEEL_small.block<3, 7>(0, 8),
       mZero7Col;
-  JEEL = (mRot0 * JEEL_full * mJtf).topRightCorner(3, 18);
+  JEEL = (mRot0 * JEEL_full * mJtf)
+             .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   // Jacobian Derivative
   if (!mInverseKinematicsOnArms) {
@@ -512,7 +532,7 @@ void Controller::setLeftArmOptParams(
         mZero7Col;
     dJEEL = (mdRot0 * JEEL_full * mJtf + mRot0 * dJEEL_full * mJtf +
              mRot0 * JEEL_full * mdJtf)
-                .topRightCorner(3, 18);
+                .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
     // P and b
     mPEEL << mWEEL * JEEL;
@@ -527,9 +547,12 @@ void Controller::setLeftArmOptParams(
 void Controller::setRightArmOptParams(
     const Eigen::Vector3d& _RightTargetPosition) {
   static Eigen::Vector3d xEERref, xEER, dxEER, ddxEERref, dxref;
-  static Eigen::MatrixXd JEER_small(3,15), dJEER_small(3,15);
-  static Eigen::MatrixXd JEER_full(3,25), dJEER_full(3,25);
-  static Eigen::MatrixXd JEER(3,18), dJEER(3,18);
+  static Eigen::MatrixXd JEER_small(numLowerBodyLinks, 15),
+      dJEER_small(numLowerBodyLinks, 15);
+  static Eigen::MatrixXd JEER_full(numLowerBodyLinks, numDof),
+      dJEER_full(numLowerBodyLinks, numDof);
+  static Eigen::MatrixXd JEER(numLowerBodyLinks, numBodyLinks),
+      dJEER(numLowerBodyLinks, numBodyLinks);
 
   xEERref = _RightTargetPosition;
   if (mSteps == 1) {
@@ -552,7 +575,8 @@ void Controller::setRightArmOptParams(
   JEER_full << JEER_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
       JEER_small.block<3, 2>(0, 6), mZeroCol, mZero7Col,
       JEER_small.block<3, 7>(0, 8);
-  JEER = (mRot0 * JEER_full * mJtf).topRightCorner(3, 18);
+  JEER = (mRot0 * JEER_full * mJtf)
+             .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   // Jacobian Derivative
   if (!mInverseKinematicsOnArms) {
@@ -562,7 +586,7 @@ void Controller::setRightArmOptParams(
         dJEER_small.block<3, 7>(0, 8);
     dJEER = (mdRot0 * JEER_full * mJtf + mRot0 * dJEER_full * mJtf +
              mRot0 * JEER_full * mdJtf)
-                .topRightCorner(3, 18);
+                .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
     // P and b
     mPEER << mWEER * JEER;
@@ -579,9 +603,12 @@ void Controller::setLeftOrientationOptParams(
   static Eigen::Quaterniond quatRef, quat;
   static double quatRef_w, quat_w;
   static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref, wref;
-  static Eigen::MatrixXd JwL_small(3,15), dJwL_small(3,15);
-  static Eigen::MatrixXd JwL_full(3,25), dJwL_full(3,25);
-  static Eigen::MatrixXd JwL(3,18), dJwL(3,18);
+  static Eigen::MatrixXd JwL_small(numLowerBodyLinks, 15),
+      dJwL_small(numLowerBodyLinks, 15);
+  static Eigen::MatrixXd JwL_full(numLowerBodyLinks, numDof),
+      dJwL_full(numLowerBodyLinks, numDof);
+  static Eigen::MatrixXd JwL(numLowerBodyLinks, numBodyLinks),
+      dJwL(numLowerBodyLinks, numBodyLinks);
 
   // Reference orientation (TargetRPY is assumed to be in Frame 0)
   quatRef = Eigen::Quaterniond(
@@ -621,7 +648,8 @@ void Controller::setLeftOrientationOptParams(
   JwL_full << JwL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
       JwL_small.block<3, 2>(0, 6), mZeroCol, JwL_small.block<3, 7>(0, 8),
       mZero7Col;
-  JwL = (mRot0 * JwL_full * mJtf).topRightCorner(3, 18);
+  JwL =
+      (mRot0 * JwL_full * mJtf).topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   if (!mInverseKinematicsOnArms) {
     // Jacobian Derivative
@@ -631,7 +659,7 @@ void Controller::setLeftOrientationOptParams(
         mZero7Col;
     dJwL = (mdRot0 * JwL_full * mJtf + mRot0 * dJwL_full * mJtf +
             mRot0 * JwL_full * mdJtf)
-               .topRightCorner(3, 18);
+               .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
     // Current angular speed in frame 0 and Reference angular acceleration of
     // the end-effector in frame 0
@@ -655,9 +683,12 @@ void Controller::setRightOrientationOptParams(
   static Eigen::Quaterniond quatRef, quat;
   static double quatRef_w, quat_w;
   static Eigen::Vector3d quatRef_xyz, quat_xyz, quatError_xyz, w, dwref, wref;
-  static Eigen::MatrixXd JwR_small(3,15), dJwR_small(3,15);
-  static Eigen::MatrixXd JwR_full(3,25), dJwR_full(3,25);
-  static Eigen::MatrixXd JwR(3,18), dJwR(3,18);
+  static Eigen::MatrixXd JwR_small(numLowerBodyLinks, 15),
+      dJwR_small(numLowerBodyLinks, 15);
+  static Eigen::MatrixXd JwR_full(numLowerBodyLinks, numDof),
+      dJwR_full(numLowerBodyLinks, numDof);
+  static Eigen::MatrixXd JwR(numLowerBodyLinks, numBodyLinks),
+      dJwR(numLowerBodyLinks, numBodyLinks);
 
   // Reference orientation (TargetRPY is assumed to be in Frame 0)
   quatRef = Eigen::Quaterniond(
@@ -697,7 +728,8 @@ void Controller::setRightOrientationOptParams(
   JwR_full << JwR_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
       JwR_small.block<3, 2>(0, 6), mZeroCol, mZero7Col,
       JwR_small.block<3, 7>(0, 8);
-  JwR = (mRot0 * JwR_full * mJtf).topRightCorner(3, 18);
+  JwR =
+      (mRot0 * JwR_full * mJtf).topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   if (!mInverseKinematicsOnArms) {
     // Jacobian Derivative
@@ -707,7 +739,7 @@ void Controller::setRightOrientationOptParams(
         dJwR_small.block<3, 7>(0, 8);
     dJwR = (mdRot0 * JwR_full * mJtf + mRot0 * dJwR_full * mJtf +
             mRot0 * JwR_full * mdJtf)
-               .topRightCorner(3, 18);
+               .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
     // Current angular speed in frame 0 and Reference angular acceleration of
     // the end-effector in frame 0
@@ -730,10 +762,12 @@ void Controller::setBalanceOptParams(double thref, double dthref,
                                      double ddthref) {
   static Eigen::Vector3d COM, dCOM, COMref, dCOMref, ddCOMref, ddCOMStar,
       dCOMStar;
-  static Eigen::MatrixXd JCOM_full(3, 25), dJCOM_full(3,25);
-  static Eigen::MatrixXd JCOM(3,18), dJCOM(3,18);
-  static Eigen::VectorXd Jth(18), dJth(18);
-  static Eigen::VectorXd thVec(3), dthVec(3);
+  static Eigen::MatrixXd JCOM_full(numLowerBodyLinks, numDof),
+      dJCOM_full(numLowerBodyLinks, numDof);
+  static Eigen::MatrixXd JCOM(numLowerBodyLinks, numBodyLinks),
+      dJCOM(numLowerBodyLinks, numBodyLinks);
+  static Eigen::VectorXd Jth(numBodyLinks), dJth(numBodyLinks);
+  static Eigen::VectorXd thVec(numLowerBodyLinks), dthVec(numLowerBodyLinks);
   static double L, th, th_wrong, dth, ddthStar, dthStar;
 
   //*********************************** Balance
@@ -777,7 +811,8 @@ void Controller::setBalanceOptParams(double thref, double dthref,
 
   // Jacobian
   JCOM_full = mRobot->getCOMLinearJacobian();
-  JCOM = (mRot0 * JCOM_full * mJtf).topRightCorner(3, 18);
+  JCOM = (mRot0 * JCOM_full * mJtf)
+             .topRightCorner(numLowerBodyLinks, numBodyLinks);
   if (mCOMAngleControl) {
     thVec << cos(th), 0.0, -sin(th);
     Jth = (cos(th) * thVec * JCOM) / COM(2);
@@ -788,7 +823,7 @@ void Controller::setBalanceOptParams(double thref, double dthref,
     dJCOM_full = mRobot->getCOMLinearJacobianDeriv();
     dJCOM = (mdRot0 * JCOM_full * mJtf + mRot0 * dJCOM_full * mJtf +
              mRot0 * JCOM_full * mdJtf)
-                .topRightCorner(3, 18);
+                .topRightCorner(numLowerBodyLinks, numBodyLinks);
     if (mCOMAngleControl) {
       dthVec << -sin(th), 0.0, -cos(th);
       dJth = (-sin(th) * thVec * JCOM * dth + cos(th) * dthVec * JCOM * dth +
@@ -799,9 +834,9 @@ void Controller::setBalanceOptParams(double thref, double dthref,
     // P and b
     if (mCOMAngleControl) {
       mPBal << mWBal(0, 0) * Jth;
-      mbBal << mWBal(0, 0) *
-                   ((-dJth * mdqBody)(0) + (mCOMPDControl ? ddthStar : ddthref));
-      //mbBal << mWBal(0, 0) *
+      mbBal << mWBal(0, 0) * ((-dJth * mdqBody)(0) +
+                              (mCOMPDControl ? ddthStar : ddthref));
+      // mbBal << mWBal(0, 0) *
       //             (-dJth * mdqBody + (mCOMPDControl ? ddthStar : ddthref));
     } else {
       mPBal << mWBal * JCOM;
@@ -846,14 +881,16 @@ void Controller::setRegulationOptParams() {
 
 //==============================================================================
 void Controller::computeDynamics() {
-  static Eigen::MatrixXd M_full(25, 25);
-  static Eigen::MatrixXd M(20, 20);
-  static Eigen::VectorXd h(20);
+  static Eigen::MatrixXd M_full(numDof, numDof);
+  static Eigen::MatrixXd M(numMinDof, numMinDof);
+  static Eigen::VectorXd h(numMinDof);
   static Eigen::VectorXd h_without_psi_equation(19);
   static double axx, alpha, beta;
-  static Eigen::VectorXd axq(18), hh(18);
-  static Eigen::MatrixXd PP(18,19);
-  static Eigen::MatrixXd Aqq(18,18), A_qq(18,18), B(18,18), pre(18,18), MM(18,18);
+  static Eigen::VectorXd axq(numBodyLinks), hh(numBodyLinks);
+  static Eigen::MatrixXd PP(numBodyLinks, 19);
+  static Eigen::MatrixXd Aqq(numBodyLinks, numBodyLinks),
+      A_qq(numBodyLinks, numBodyLinks), B(numBodyLinks, numBodyLinks),
+      pre(numBodyLinks, numBodyLinks), MM(numBodyLinks, numBodyLinks);
 
   // ***************************** Inertia and Coriolis Matrices
   M_full = mRobot->getMassMatrix();
@@ -861,18 +898,16 @@ void Controller::computeDynamics() {
   h = mJtf.transpose() * M_full * mdJtf * mdqMin +
       mJtf.transpose() * mRobot->getCoriolisAndGravityForces();
   h_without_psi_equation(0) = h(0);
-  h_without_psi_equation.tail(18) = h.tail(18);
+  h_without_psi_equation.tail(numBodyLinks) = h.tail(numBodyLinks);
 
   axx = M(0, 0);
-  axq = M.bottomLeftCorner(18, 1);
-  Aqq = M.bottomRightCorner(18, 18);
+  axq = M.bottomLeftCorner(numBodyLinks, 1);
+  Aqq = M.bottomRightCorner(numBodyLinks, numBodyLinks);
   alpha = axq(0) / (mR * axx);
   beta = 1 / (1 + alpha);
   A_qq = Aqq - (1 / axx) * (axq * axq.transpose());  // AqqSTAR in derivation
-  //B << axq / (mR * axx), Eigen::Matrix<double, 18, 17>::Zero();
-  //pre = Eigen::Matrix<double, 18, 18>::Identity() - beta * B;
-  B << axq / (mR * axx), Eigen::MatrixXd::Zero(18,17);
-  pre = Eigen::MatrixXd::Identity(18,18) - beta * B;
+  B << axq / (mR * axx), Eigen::MatrixXd::Zero(numBodyLinks, 17);
+  pre = Eigen::MatrixXd::Identity(numBodyLinks, numBodyLinks) - beta * B;
   PP << -pre * axq / axx, pre;
   MM = pre * A_qq;
   hh = PP * h_without_psi_equation;
@@ -1049,8 +1084,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     // cout << "size mdqBodyRef: " << mdqBodyRef.rows() << "x" <<
     // mdqBodyRef.cols() << endl; cout << "mdqBodyRef: " <<
     // mdqBodyRef.transpose() << endl;
-    opt_torque_cmdL = -mKvJoint * (dqL - mdqBodyRef.segment(3, 7));
-    opt_torque_cmdR = -mKvJoint * (dqR - mdqBodyRef.segment(10, 7));
+    opt_torque_cmdL = -mKvJoint * (dqL - mdqBodyRef.segment(3, numArmJoints));
+    opt_torque_cmdR = -mKvJoint * (dqR - mdqBodyRef.segment(10, numArmJoints));
 
     // Set lmtd_torque_cmd
     for (int i = 0; i < 7; i++) {
@@ -1115,7 +1150,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
   // if(mSteps%(maxTimeSet==1?30:30) == 0)
   if (false) {
     std::cout << "mForces: " << mForces(0);
-    for (int i = 1; i < 19; i++) {
+    for (int i = 1; i < numActuators; i++) {
       std::cout << ", " << mForces(i);
     }
     std::cout << std::endl;

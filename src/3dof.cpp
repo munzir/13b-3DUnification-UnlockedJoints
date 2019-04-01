@@ -38,14 +38,16 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::istringstream stream;
     double newDouble;
 
-    mTauLim = Eigen::VectorXd(18);
+    int numBodyLinks = 18;
+
+    mTauLim = Eigen::VectorXd(numBodyLinks);
     mForces = Eigen::VectorXd(2);
     mDDPStatePenalties = Eigen::VectorXd(8);
     mDDPTerminalStatePenalties = Eigen::VectorXd(8);
-    mDDPControlPenalties       = Eigen::VectorXd(2);
-    mMPCStatePenalties         = Eigen::VectorXd(8);
+    mDDPControlPenalties = Eigen::VectorXd(2);
+    mMPCStatePenalties = Eigen::VectorXd(8);
     mMPCTerminalStatePenalties = Eigen::VectorXd(8);
-    mMPCControlPenalties       = Eigen::VectorXd(2);
+    mMPCControlPenalties = Eigen::VectorXd(2);
 
     try {
       cfg->parse(configFile);
@@ -103,7 +105,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
       str = cfg->lookupString(scope, "tauLim");
       stream.str(str);
-      for (int i = 0; i < 18; i++) stream >> mTauLim(i);
+      for (int i = 0; i < numBodyLinks; i++) stream >> mTauLim(i);
       stream.clear();
 
       mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom");
@@ -225,7 +227,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
         0.895989, 0.887415, -0.267292, 0.375566;
     mTrackBall.setQuaternion(Eigen::Quaterniond(mTrackBallRot));
     mZoom = 0.25;
-
   }
 
   void drawWorld() const override;
@@ -924,7 +925,6 @@ void MyWindow::computeDDPTrajectory() {
   mDDPControlTraj = DDP_traj.control_trajectory;
 
   writer.save_trajectory(mDDPStateTraj, mDDPControlTraj, "initial_traj.csv");
-
 }
 
 //==============================================================================
