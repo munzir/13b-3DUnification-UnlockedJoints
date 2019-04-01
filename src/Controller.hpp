@@ -202,6 +202,9 @@ class Controller {
   int numBodyLinks;
   int numArmJoints;
   int numLowerBodyLinks;
+  int numBodyLinksOnBase;
+  int numTwipDof;
+  int numTwipMinDof;
 };
 
 #endif  // EXAMPLES_OPERATIONALSPACECONTROL_CONTROLLER_HPP_
