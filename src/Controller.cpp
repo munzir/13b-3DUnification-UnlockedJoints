@@ -67,6 +67,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   numBodyLinks = numDof - numPassiveJoints - numWheels + 1;  // +1 for the base
   numArmJoints = 7;
   numLowerBodyLinks = 3;  // base, waist, torso
+  numBodyLinksOnBase = numBodyLinks - 1;
+  numTwipDof = numPassiveJoints + numWheels;
+  numTwipMinDof = numTwipDof - numConstraints;
 
   std::cout << "numDof:" << numDof << std::endl;
   std::cout << "numConstraints:" << numConstraints << std::endl;
@@ -342,10 +345,12 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
   // *********************************** Transform Jacobians
 
-  mJtf.topRightCorner(8, 17) = Eigen::MatrixXd::Zero(8, 17);
-  mJtf.bottomLeftCorner(17, numLowerBodyLinks) =
-      Eigen::MatrixXd::Zero(17, numLowerBodyLinks);
-  mJtf.bottomRightCorner(17, 17) = Eigen::MatrixXd::Identity(17, 17);
+  mJtf.topRightCorner(numTwipDof, numBodyLinksOnBase) =
+      Eigen::MatrixXd::Zero(numTwipDof, numBodyLinksOnBase);
+  mJtf.bottomLeftCorner(numBodyLinksOnBase, numTwipMinDof) =
+      Eigen::MatrixXd::Zero(numBodyLinksOnBase, numTwipMinDof);
+  mJtf.bottomRightCorner(numBodyLinksOnBase, numBodyLinksOnBase) =
+      Eigen::MatrixXd::Identity(numBodyLinksOnBase, numBodyLinksOnBase);
 
   mdJtf.setZero();
 
@@ -424,7 +429,7 @@ void Controller::updatePositions() {
                   mBaseTf(2, 1));
 
   mqBody(0) = mqBody1;
-  mqBody.tail(17) = mq.tail(17);
+  mqBody.tail(numBodyLinksOnBase) = mq.tail(numBodyLinksOnBase);
   mRot0 << cos(mpsi), sin(mpsi), 0, -sin(mpsi), cos(mpsi), 0, 0, 0, 1;
 }
 
@@ -439,7 +444,7 @@ void Controller::updateSpeeds() {
   mdqBody1 = -mdq(0);
   mdpsi = (mBaseTf.block<3, 3>(0, 0) * mdq.head(3))(2);
   mdqBody(0) = mdqBody1;
-  mdqBody.tail(17) = mdq.tail(17);
+  mdqBody.tail(numBodyLinksOnBase) = mdq.tail(numBodyLinksOnBase);
   mdqMin(0) = mdx;
   mdqMin(1) = mdpsi;
   mdqMin.tail(numBodyLinks) = mdqBody;
@@ -464,11 +469,11 @@ void Controller::updateTransformJacobian() {
   // [dq0 dq1 dq2 dq3 dq4 dq5 dq6 dq7]' = J*[dx dpsi dq_1]';
   // w
 
-  mJtf.topLeftCorner(8, numLowerBodyLinks) << 0, 0, -1, 0, cos(mqBody1), 0, 0,
+  mJtf.topLeftCorner(numTwipDof, numTwipMinDof) << 0, 0, -1, 0, cos(mqBody1), 0, 0,
       sin(mqBody1), 0, 0, 0, 0, sin(mqBody1), 0, 0, -cos(mqBody1), 0, 0, 1 / mR,
       -mL / (2 * mR), -1, 1 / mR, mL / (2 * mR), -1;
 
-  mdJtf.topLeftCorner(8, numLowerBodyLinks) << 0, 0, 0, 0,
+  mdJtf.topLeftCorner(numTwipDof, numTwipMinDof) << 0, 0, 0, 0,
       -sin(mqBody1) * mdqBody1, 0, 0, cos(mqBody1) * mdqBody1, 0, 0, 0, 0,
       cos(mqBody1) * mdqBody1, 0, 0, sin(mqBody1) * mdqBody1, 0, 0, 0, 0, 0, 0,
       0, 0;
@@ -492,13 +497,14 @@ void Controller::updateTransformJacobian() {
 //==============================================================================
 void Controller::setLeftArmOptParams(
     const Eigen::Vector3d& _LeftTargetPosition) {
+  int numTaskDof = 3;
   static Eigen::Vector3d xEELref, xEEL, dxEEL, ddxEELref, dxref;
-  static Eigen::MatrixXd JEEL_small(numLowerBodyLinks, 15),
-      dJEEL_small(numLowerBodyLinks, 15);
-  static Eigen::MatrixXd JEEL_full(numLowerBodyLinks, numDof),
-      dJEEL_full(numLowerBodyLinks, numDof);
-  static Eigen::MatrixXd JEEL(numLowerBodyLinks, numBodyLinks),
-      dJEEL(numLowerBodyLinks, numBodyLinks);
+  static Eigen::MatrixXd JEEL_small(numTaskDof, 15),
+      dJEEL_small(numTaskDof, 15);
+  static Eigen::MatrixXd JEEL_full(numTaskDof, numDof),
+      dJEEL_full(numTaskDof, numDof);
+  static Eigen::MatrixXd JEEL(numTaskDof, numBodyLinks),
+      dJEEL(numTaskDof, numBodyLinks);
 
   xEELref = _LeftTargetPosition;
   if (mSteps == 1) {
@@ -522,7 +528,7 @@ void Controller::setLeftArmOptParams(
       JEEL_small.block<3, 2>(0, 6), mZeroCol, JEEL_small.block<3, 7>(0, 8),
       mZero7Col;
   JEEL = (mRot0 * JEEL_full * mJtf)
-             .topRightCorner(numLowerBodyLinks, numBodyLinks);
+             .topRightCorner(numTaskDof, numBodyLinks);
 
   // Jacobian Derivative
   if (!mInverseKinematicsOnArms) {
@@ -532,7 +538,7 @@ void Controller::setLeftArmOptParams(
         mZero7Col;
     dJEEL = (mdRot0 * JEEL_full * mJtf + mRot0 * dJEEL_full * mJtf +
              mRot0 * JEEL_full * mdJtf)
-                .topRightCorner(numLowerBodyLinks, numBodyLinks);
+                .topRightCorner(numTaskDof, numBodyLinks);
 
     // P and b
     mPEEL << mWEEL * JEEL;
