@@ -200,8 +200,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
     mController = new Controller(mkrang, mkrang->getBodyNode("lGripper"),
                                  mkrang->getBodyNode("rGripper"));
 
-    std::cout << "Do we create a controller?" << std::endl;
-
     // Targets for the controller
     // baseTf = mController->mRobot->getBodyNode(0)->getTransform();
     // double psi =  atan2(baseTf(0,0), -baseTf(1,0));
@@ -927,7 +925,6 @@ void MyWindow::computeDDPTrajectory() {
 
   writer.save_trajectory(mDDPStateTraj, mDDPControlTraj, "initial_traj.csv");
 
-  std::cout << "Do we pass DDP stuff?" << std::endl;
 }
 
 //==============================================================================
@@ -1014,7 +1011,7 @@ void MyWindow::timeStepping() {
         cur_state, hor_control, hor_traj_states, *mDDPDynamics,
         running_cost_horizon, terminal_cost_horizon);
     mMPCControlRef = results_horizon.control_trajectory.col(0);
-    mMPCStateRef = results_horizon.state_trajectory.col(1);
+    mMPCStateRef = results_horizon.state_trajectory.col(0);
     mthref = mMPCStateRef(2);
     mdthref = mMPCStateRef(5);
 
