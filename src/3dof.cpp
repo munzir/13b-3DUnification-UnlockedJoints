@@ -38,8 +38,9 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::istringstream stream;
     double newDouble;
 
-    numDof = 25;
-    numBodyLinks = 18;
+    // Warning hardcoded, make this cleaner
+    numDof = 24;
+    numBodyLinks = 17;
 
     numControls = 2;
     numStates = 8;
@@ -186,7 +187,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
         .prerotate(Eigen::AngleAxisd(-M_PI / 2 + psi, Eigen::Vector3d::UnitY()))
         .prerotate(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitX()));
     aa = Eigen::AngleAxisd(baseTf.rotation());
-    q << aa.angle() * aa.axis(), mkrang->getPositions().tail(22);
+    q << aa.angle() * aa.axis(), mkrang->getPositions().tail(numDof - 3);
     mkrang->setPositions(q);
 
     // Initialize the simplified robot
@@ -1223,17 +1224,25 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   strcpy(fullpath, urdfpath);
 
   // Load the Skeleton from a file
-  krang = loader.parseSkeleton(strcat(fullpath, "/Krang/KrangOld.urdf"));
+  // krang = loader.parseSkeleton(strcat(fullpath, "/Krang/KrangOld.urdf"));
+  krang = loader.parseSkeleton(strcat(fullpath, "/Krang/Krang.urdf"));
   krang->setName("krang");
 
   int numDof = krang->getNumDofs();
 
   Eigen::VectorXd initPoseParams(numDof - 1);
+  // initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0, 0.0, -4.2976,
+  // 0.053232,
+  //    -0.0575697, -1.36631, -0.495357, 0.969689, -1.55801, -0.421576,
+  //    -1.27307, -1.35663, 1.2217, 0.606397, -0.91889, 1.50091,
+  //    0.516969, 1.31059, 1.26479;  // heading, qBase, x, y, z, qLWheel,
+  //    qRWheel, qWaist, qTorso,
+  //              // qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
   initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0, 0.0, -4.2976, 0.053232,
-      -0.0575697, -1.36631, -0.495357, 0.969689, -1.55801, -0.421576, -1.27307,
-      -1.35663, 1.2217, 0.606397, -0.91889, 1.50091, 0.516969, 1.31059,
+      -1.36631, -0.495357, 0.969689, -1.55801, -0.421576, -1.27307, -1.35663,
+      1.2217, 0.606397, -0.91889, 1.50091, 0.516969, 1.31059,
       1.26479;  // heading, qBase, x, y, z, qLWheel, qRWheel, qWaist, qTorso,
-                // qKinect, qLArm0, ... qLArm6, qRArm0, ..., qRArm6
+                // qLArm0, ... qLArm6, qRArm0, ..., qRArm6
   size_t i;
   double newDouble, headingInit, qBaseInit, qLWheelInit, qRWheelInit,
       qWaistInit, qTorsoInit, qKinectInit, th;
@@ -1244,14 +1253,14 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   Eigen::AngleAxisd aa;
   Eigen::VectorXd q(numDof);
 
-
   // Read initial pose from the file
   file = std::ifstream("../../src/defaultInit.txt");
   assert(file.is_open());
   file.getline(line, 1024);
   stream = std::istringstream(line);
   i = 0;
-  while ((i < numDof - 1) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
+  while ((i < numDof - 1) && (stream >> newDouble))
+    initPoseParams(i++) = newDouble;
   file.close();
   headingInit = initPoseParams(0);
   qBaseInit = initPoseParams(1);
@@ -1260,9 +1269,8 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   qRWheelInit = initPoseParams(6);
   qWaistInit = initPoseParams(7);
   qTorsoInit = initPoseParams(8);
-  qKinectInit = initPoseParams(9);
-  qLeftArmInit << initPoseParams.segment(10, 7);
-  qRightArmInit << initPoseParams.segment(17, 7);
+  qLeftArmInit << initPoseParams.segment(9, 7);
+  qRightArmInit << initPoseParams.segment(16, 7);
 
   // Calculating the axis angle representation of orientation from headingInit
   // and qBaseInit: RotX(pi/2)*RotY(-pi/2+headingInit)*RotX(-qBaseInit)
@@ -1275,7 +1283,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
 
   // Set the positions and get the resulting COM angle
   q << aa.angle() * aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit,
-      qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit;
+      qTorsoInit, qLeftArmInit, qRightArmInit;
   krang->setPositions(q);
   COM = krang->getCOM() - xyzInit;
   th = atan2(COM(0), COM(2));
@@ -1290,7 +1298,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
       .prerotate(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitX()));
   aa = Eigen::AngleAxisd(baseTf.rotation());
   q << aa.angle() * aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit,
-      qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit;
+      qTorsoInit, qLeftArmInit, qRightArmInit;
   krang->setPositions(q);
 
   krang->getJoint(0)->setDampingCoefficient(0, 0.5);
