@@ -128,14 +128,15 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mJtf = Eigen::MatrixXd(numDof, numMinDof);
   mdJtf = Eigen::MatrixXd(numDof, numMinDof);
 
-  mPEEL = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
-  mPOrL = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
-  mPEER = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
-  mPOrR = Eigen::MatrixXd(numLowerBodyLinks, numBodyLinks);
-  mbEEL = Eigen::VectorXd(numLowerBodyLinks);
-  mbOrL = Eigen::VectorXd(numLowerBodyLinks);
-  mbEER = Eigen::VectorXd(numLowerBodyLinks);
-  mbOrR = Eigen::VectorXd(numLowerBodyLinks);
+  int numTaskDof = 3;
+  mPEEL = Eigen::MatrixXd(numTaskDof, numBodyLinks);
+  mPOrL = Eigen::MatrixXd(numTaskDof, numBodyLinks);
+  mPEER = Eigen::MatrixXd(numTaskDof, numBodyLinks);
+  mPOrR = Eigen::MatrixXd(numTaskDof, numBodyLinks);
+  mbEEL = Eigen::VectorXd(numTaskDof);
+  mbOrL = Eigen::VectorXd(numTaskDof);
+  mbEER = Eigen::VectorXd(numTaskDof);
+  mbOrR = Eigen::VectorXd(numTaskDof);
 
   mPPose = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
   mPSpeedReg = Eigen::MatrixXd(numBodyLinks, numBodyLinks);
@@ -144,8 +145,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   mbSpeedReg = Eigen::VectorXd(numBodyLinks);
   mbReg = Eigen::VectorXd(numBodyLinks);
 
-  mZeroCol = Eigen::VectorXd(numLowerBodyLinks);
-  mZero7Col = Eigen::MatrixXd(numLowerBodyLinks, numArmJoints);
+  mZeroCol = Eigen::VectorXd(numTaskDof);
+  mZero7Col = Eigen::MatrixXd(numTaskDof, numArmJoints);
 
   mSteps = 0;
 
@@ -162,7 +163,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
       atan2(mBaseTf(0, 1) * cos(psiInit) + mBaseTf(1, 1) * sin(psiInit),
             mBaseTf(2, 1));
   mqBodyInit(0) = qBody1Init;
-  mqBodyInit.tail(17) = qInit.tail(17);
+  mqBodyInit.tail(numBodyLinksOnBase) = qInit.tail(numBodyLinksOnBase);
 
   dart::dynamics::BodyNode* LWheel = mRobot->getBodyNode("LWheel");
   dart::dynamics::BodyNode* RWheel = mRobot->getBodyNode("RWheel");
@@ -216,7 +217,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
     str = cfg->lookupString(scope, "KvJoint");
     stream.str(str);
-    for (int i = 0; i < 7; i++) stream >> mKvJoint(i, i);
+    for (int i = 0; i < numArmJoints; i++) stream >> mKvJoint(i, i);
     stream.clear();
 
     // -- Torque Limits
@@ -270,21 +271,18 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     stream.str(str);
     for (int i = 0; i < numLowerBodyLinks; i++) stream >> mWBal(i, i);
     stream.clear();
+
     // Regulation
-    const char* s[] = {"wRegBase", "wRegWaist", "wRegTorso", "wRegKinect",
-                       "wRegArm1", "wRegArm2",  "wRegArm3",  "wRegArm4",
-                       "wRegArm5", "wRegArm6",  "wRegArm7"};
-    for (int i = 0; i < numLowerBodyLinks + 1 + numArmJoints; i++) {
-      str = cfg->lookupString(scope, s[i]);
+    for (int i = 0; i < numBodyLinks; i++) {
+      str = (i == 0 ? "Base"
+                    : cfg->lookupString(
+                          scope,
+                          ("wReg" + _robot->getDof(i + numTwipDof -1)->getName())
+                              .c_str()));
       stream.str(str);
       stream >> mWMatPose(i, i);
       stream >> mWMatSpeedReg(i, i);
       stream >> mWMatReg(i, i);
-      if (i > numLowerBodyLinks - 1 + 1) {
-        mWMatPose(i + numArmJoints, i + numArmJoints) = mWMatPose(i, i);
-        mWMatSpeedReg(i + numArmJoints, i + numArmJoints) = mWMatSpeedReg(i, i);
-        mWMatReg(i + numArmJoints, i + numArmJoints) = mWMatReg(i, i);
-      }
       stream.clear();
     }
 
@@ -469,9 +467,9 @@ void Controller::updateTransformJacobian() {
   // [dq0 dq1 dq2 dq3 dq4 dq5 dq6 dq7]' = J*[dx dpsi dq_1]';
   // w
 
-  mJtf.topLeftCorner(numTwipDof, numTwipMinDof) << 0, 0, -1, 0, cos(mqBody1), 0, 0,
-      sin(mqBody1), 0, 0, 0, 0, sin(mqBody1), 0, 0, -cos(mqBody1), 0, 0, 1 / mR,
-      -mL / (2 * mR), -1, 1 / mR, mL / (2 * mR), -1;
+  mJtf.topLeftCorner(numTwipDof, numTwipMinDof) << 0, 0, -1, 0, cos(mqBody1), 0,
+      0, sin(mqBody1), 0, 0, 0, 0, sin(mqBody1), 0, 0, -cos(mqBody1), 0, 0,
+      1 / mR, -mL / (2 * mR), -1, 1 / mR, mL / (2 * mR), -1;
 
   mdJtf.topLeftCorner(numTwipDof, numTwipMinDof) << 0, 0, 0, 0,
       -sin(mqBody1) * mdqBody1, 0, 0, cos(mqBody1) * mdqBody1, 0, 0, 0, 0,
@@ -527,8 +525,7 @@ void Controller::setLeftArmOptParams(
   JEEL_full << JEEL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
       JEEL_small.block<3, 2>(0, 6), mZeroCol, JEEL_small.block<3, 7>(0, 8),
       mZero7Col;
-  JEEL = (mRot0 * JEEL_full * mJtf)
-             .topRightCorner(numTaskDof, numBodyLinks);
+  JEEL = (mRot0 * JEEL_full * mJtf).topRightCorner(numTaskDof, numBodyLinks);
 
   // Jacobian Derivative
   if (!mInverseKinematicsOnArms) {
@@ -912,7 +909,8 @@ void Controller::computeDynamics() {
   alpha = axq(0) / (mR * axx);
   beta = 1 / (1 + alpha);
   A_qq = Aqq - (1 / axx) * (axq * axq.transpose());  // AqqSTAR in derivation
-  B << axq / (mR * axx), Eigen::MatrixXd::Zero(numBodyLinks, 17);
+  B << axq / (mR * axx),
+      Eigen::MatrixXd::Zero(numBodyLinks, numBodyLinksOnBase);
   pre = Eigen::MatrixXd::Identity(numBodyLinks, numBodyLinks) - beta * B;
   PP << -pre * axq / axx, pre;
   MM = pre * A_qq;
