@@ -34,7 +34,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
     const char* scope = "";
     const char* configFile = "../../src/controlParams.cfg";
     const char* str;
-    const char* urdfpath;
     std::istringstream stream;
     double newDouble;
 
@@ -52,7 +51,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
     try {
       cfg->parse(configFile);
 
-      urdfpath = cfg->lookupString(scope, "urdfpath");
+      strcpy(urdfpath3DOF, cfg->lookupString(scope, "urdfpath3DOF"));
 
       mLockedJoints = cfg->lookupBoolean(scope, "lockedJoints");
 
@@ -118,7 +117,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
       std::cerr << ex.c_str() << std::endl;
       cfg->destroy();
     }
-    std::cout << "urdfpath: " << urdfpath << std::endl;
+    std::cout << "urdfpath3DOF: " << urdfpath3DOF << std::endl;
     std::cout << "lockedJoints: " << (mLockedJoints ? "true" : "false")
               << std::endl;
     std::cout << "initCOMAngle: " << mInitCOMAngle << std::endl;
@@ -183,7 +182,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
     mkrang->setPositions(q);
 
     // Initialize the simplified robot
-    m3DOF = create3DOF_URDF(mkrang, urdfpath);
+    m3DOF = create3DOF_URDF(mkrang, urdfpath3DOF);
     mWorld3dof = std::make_shared<dart::simulation::World>();
     mWorld3dof->addSkeleton(m3DOF);
     getSimple(m3DOF, mkrang);
@@ -254,6 +253,8 @@ class MyWindow : public dart::gui::glut::SimWindow {
   ~MyWindow() {}
 
  protected:
+  char urdfpath3DOF[1024];
+
   /// Full robot and low level controller
   dart::dynamics::SkeletonPtr mkrang;
   Controller* mController;
@@ -674,13 +675,10 @@ dart::dynamics::SkeletonPtr MyWindow::create3DOF_URDF(
     dart::dynamics::SkeletonPtr krang, const char* urdfpath) {
   char fullpath[1024];
 
-  // copy path to local variable
-  strcpy(fullpath, urdfpath);
-
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr threeDOF =
-      loader.parseSkeleton(strcat(fullpath, "/3DOF-WIP/3dof.urdf"));
+      loader.parseSkeleton(urdfpath);
   threeDOF->setName("m3DOF");
 
   threeDOF->getJoint(0)->setDampingCoefficient(0, 0.5);
@@ -1220,11 +1218,8 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   Eigen::VectorXd q(25);
   char fullpath[1024];
 
-  // copy path to local variable
-  strcpy(fullpath, urdfpath);
-
   // Load the Skeleton from a file
-  krang = loader.parseSkeleton(strcat(fullpath, "/Krang/KrangOld.urdf"));
+  krang = loader.parseSkeleton(urdfpath);
   krang->setName("krang");
 
   // Read initial pose from the file
@@ -1289,13 +1284,10 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee,
   Eigen::VectorXd qObject(6);
   char fullpath[1024];
 
-  // copy path to local variable
-  strcpy(fullpath, urdfpath);
-
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr tray =
-      loader.parseSkeleton(strcat(fullpath, "/scenes/tray.urdf"));
+      loader.parseSkeleton(urdfpath);
   tray->setName("tray");
 
   // Orientation
@@ -1324,13 +1316,10 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee,
   Eigen::VectorXd qObject(6);
   char fullpath[1024];
 
-  // copy path to local variable
-  strcpy(fullpath, urdfpath);
-
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
   dart::dynamics::SkeletonPtr cup =
-      loader.parseSkeleton(strcat(fullpath, "/scenes/cup.urdf"));
+      loader.parseSkeleton(urdfpath);
   cup->setName("cup");
 
   // Orientation
@@ -1354,18 +1343,22 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee,
 //==============================================================================
 int main(int argc, char* argv[]) {
   // To load tray and cup or not
+  char urdfpathKrang[1024];
+  char urdfpathTray[1024];
+  char urdfpathCup[1024];
   bool loadTray, loadCup;
   double trayCupFriction;
   config4cpp::Configuration* cfg = config4cpp::Configuration::create();
   const char* scope = "";
   const char* configFile = "../../src/controlParams.cfg";
-  const char* urdfpath;
   try {
     cfg->parse(configFile);
     loadTray = cfg->lookupBoolean(scope, "tray");
     loadCup = cfg->lookupBoolean(scope, "cup");
     trayCupFriction = cfg->lookupFloat(scope, "trayCupFriction");
-    urdfpath = cfg->lookupString(scope, "urdfpath");
+    strcpy(urdfpathKrang, cfg->lookupString(scope, "urdfpathKrang"));
+    strcpy(urdfpathTray, cfg->lookupString(scope, "urdfpathTray"));
+    strcpy(urdfpathCup, cfg->lookupString(scope, "urdfpathCup"));
   } catch (const config4cpp::ConfigurationException& ex) {
     std::cerr << ex.c_str() << std::endl;
     cfg->destroy();
@@ -1373,7 +1366,9 @@ int main(int argc, char* argv[]) {
   std::cout << "loadTray: " << (loadTray ? "true" : "false") << std::endl;
   std::cout << "loadCup: " << (loadCup ? "true" : "false") << std::endl;
   std::cout << "trayCupFriction: " << trayCupFriction << std::endl;
-  std::cout << "urdfpath: " << urdfpath << std::endl;
+  std::cout << "urdfpathKrang: " << urdfpathKrang << std::endl;
+  std::cout << "urdfpathTray: " << urdfpathTray << std::endl;
+  std::cout << "urdfpathCup: " << urdfpathCup << std::endl;
 
   // Create world
   dart::simulation::WorldPtr world =
@@ -1385,13 +1380,13 @@ int main(int argc, char* argv[]) {
   world->addSkeleton(floor);
 
   // Load robot
-  dart::dynamics::SkeletonPtr robot = createKrang(urdfpath);
+  dart::dynamics::SkeletonPtr robot = createKrang(urdfpathKrang);
   world->addSkeleton(robot);
 
   // Load Tray
   if (loadTray) {
     dart::dynamics::SkeletonPtr tray =
-        createTray(robot->getBodyNode("lGripper"), urdfpath);
+        createTray(robot->getBodyNode("lGripper"), urdfpathTray);
     world->addSkeleton(tray);
     tray->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
     std::cout << "tray surface friction: "
@@ -1402,7 +1397,7 @@ int main(int argc, char* argv[]) {
   if (loadCup) {
     dart::dynamics::SkeletonPtr cup =
         createCup(robot->getBodyNode("lGripper"),
-                  urdfpath);  // cup->setPositions(tray->getPositions());
+                  urdfpathCup);  // cup->setPositions(tray->getPositions());
     world->addSkeleton(cup);
     cup->getBodyNode(0)->setFrictionCoeff(trayCupFriction);
     std::cout << "cup surface friction: "
