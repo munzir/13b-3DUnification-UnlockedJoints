@@ -48,6 +48,19 @@
 #include "ik.hpp"
 
 //==============================================================================
+std::vector<int> getChainDofIndices(dart::dynamics::BodyNode* body) {
+  std::vector<int> v;
+  auto p = body->getParentJoint();
+  v.push_back(p->getDof(0)->getIndexInSkeleton());
+  auto b = p->getParentBodyNode();
+  while (b) {
+    p = b->getParentJoint();
+    v.insert(v.begin(), p->getDof(0)->getIndexInSkeleton());
+    b = p->getParentBodyNode();
+  }
+  return v;
+}
+//==============================================================================
 Controller::Controller(dart::dynamics::SkeletonPtr _robot,
                        dart::dynamics::BodyNode* _LeftendEffector,
                        dart::dynamics::BodyNode* _RightendEffector)
@@ -276,9 +289,9 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     for (int i = 0; i < numBodyLinks; i++) {
       str = (i == 0 ? "Base"
                     : cfg->lookupString(
-                          scope,
-                          ("wReg" + _robot->getDof(i + numTwipDof -1)->getName())
-                              .c_str()));
+                          scope, ("wReg" +
+                                  _robot->getDof(i + numTwipDof - 1)->getName())
+                                     .c_str()));
       stream.str(str);
       stream >> mWMatPose(i, i);
       stream >> mWMatSpeedReg(i, i);
@@ -337,8 +350,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     mPBal = Eigen::MatrixXd::Zero(1, numBodyLinks);
     mbBal = Eigen::VectorXd::Zero(1);
   } else {
-    mPBal = Eigen::MatrixXd::Zero(numLowerBodyLinks, numBodyLinks);
-    mbBal = Eigen::VectorXd::Zero(numLowerBodyLinks);
+    mPBal = Eigen::MatrixXd::Zero(3, numBodyLinks);
+    mbBal = Eigen::VectorXd::Zero(3);
   }
 
   // *********************************** Transform Jacobians
@@ -522,17 +535,20 @@ void Controller::setLeftArmOptParams(
 
   // Jacobian
   JEEL_small = mLeftEndEffector->getLinearJacobian();
-  JEEL_full << JEEL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-      JEEL_small.block<3, 2>(0, 6), mZeroCol, JEEL_small.block<3, 7>(0, 8),
-      mZero7Col;
+  JEEL_full.setZero();
+  JEEL_full.leftCols(numPassiveJoints) = JEEL_small.leftCols(numPassiveJoints);
+  auto chain = getChainDofIndices(mLeftEndEffector);
+  for (int i = 1; i < chain.size(); i++)
+    JEEL_full.col(chain[i]) = JEEL_small.col(numPassiveJoints + i - 1);
   JEEL = (mRot0 * JEEL_full * mJtf).topRightCorner(numTaskDof, numBodyLinks);
 
   // Jacobian Derivative
   if (!mInverseKinematicsOnArms) {
     dJEEL_small = mLeftEndEffector->getLinearJacobianDeriv();
-    dJEEL_full << dJEEL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-        dJEEL_small.block<3, 2>(0, 6), mZeroCol, dJEEL_small.block<3, 7>(0, 8),
-        mZero7Col;
+    dJEEL_full.setZero();
+    dJEEL_full.leftCols(numPassiveJoints) = dJEEL_small.leftCols(numPassiveJoints);
+    for (int i = 1; i < chain.size(); i++)
+      dJEEL_full.col(chain[i]) = dJEEL_small.col(numPassiveJoints + i - 1);
     dJEEL = (mdRot0 * JEEL_full * mJtf + mRot0 * dJEEL_full * mJtf +
              mRot0 * JEEL_full * mdJtf)
                 .topRightCorner(numTaskDof, numBodyLinks);
@@ -575,18 +591,21 @@ void Controller::setRightArmOptParams(
 
   // Jacobian
   JEER_small = mRightEndEffector->getLinearJacobian();
-  JEER_full << JEER_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-      JEER_small.block<3, 2>(0, 6), mZeroCol, mZero7Col,
-      JEER_small.block<3, 7>(0, 8);
+  JEER_full.setZero();
+  JEER_full.leftCols(numPassiveJoints) = JEER_small.leftCols(numPassiveJoints);
+  auto chain = getChainDofIndices(mRightEndEffector);
+  for (int i = 1; i < chain.size(); i++)
+    JEER_full.col(chain[i]) = JEER_small.col(numPassiveJoints + i - 1);
   JEER = (mRot0 * JEER_full * mJtf)
              .topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   // Jacobian Derivative
   if (!mInverseKinematicsOnArms) {
     dJEER_small = mRightEndEffector->getLinearJacobianDeriv();
-    dJEER_full << dJEER_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-        dJEER_small.block<3, 2>(0, 6), mZeroCol, mZero7Col,
-        dJEER_small.block<3, 7>(0, 8);
+    dJEER_full.setZero();
+    dJEER_full.leftCols(numPassiveJoints) = dJEER_small.leftCols(numPassiveJoints);
+    for (int i = 1; i < chain.size(); i++)
+      dJEER_full.col(chain[i]) = dJEER_small.col(numPassiveJoints + i - 1);
     dJEER = (mdRot0 * JEER_full * mJtf + mRot0 * dJEER_full * mJtf +
              mRot0 * JEER_full * mdJtf)
                 .topRightCorner(numLowerBodyLinks, numBodyLinks);
@@ -648,18 +667,21 @@ void Controller::setLeftOrientationOptParams(
 
   // Jacobian
   JwL_small = mLeftEndEffector->getAngularJacobian();
-  JwL_full << JwL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-      JwL_small.block<3, 2>(0, 6), mZeroCol, JwL_small.block<3, 7>(0, 8),
-      mZero7Col;
+  JwL_full.setZero();
+  JwL_full.leftCols(numPassiveJoints) = JwL_small.leftCols(numPassiveJoints);
+  auto chain = getChainDofIndices(mLeftEndEffector);
+  for (int i = 1; i < chain.size(); i++)
+    JwL_full.col(chain[i]) = JwL_small.col(numPassiveJoints + i - 1);
   JwL =
       (mRot0 * JwL_full * mJtf).topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   if (!mInverseKinematicsOnArms) {
     // Jacobian Derivative
     dJwL_small = mLeftEndEffector->getAngularJacobianDeriv();
-    dJwL_full << dJwL_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-        dJwL_small.block<3, 2>(0, 6), mZeroCol, dJwL_small.block<3, 7>(0, 8),
-        mZero7Col;
+    dJwL_full.setZero();
+    dJwL_full.leftCols(numPassiveJoints) = dJwL_small.leftCols(numPassiveJoints);
+    for (int i = 1; i < chain.size(); i++)
+      dJwL_full.col(chain[i]) = dJwL_small.col(numPassiveJoints + i - 1);
     dJwL = (mdRot0 * JwL_full * mJtf + mRot0 * dJwL_full * mJtf +
             mRot0 * JwL_full * mdJtf)
                .topRightCorner(numLowerBodyLinks, numBodyLinks);
@@ -728,18 +750,21 @@ void Controller::setRightOrientationOptParams(
 
   // Jacobian
   JwR_small = mRightEndEffector->getAngularJacobian();
-  JwR_full << JwR_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-      JwR_small.block<3, 2>(0, 6), mZeroCol, mZero7Col,
-      JwR_small.block<3, 7>(0, 8);
+  JwR_full.setZero();
+  JwR_full.leftCols(numPassiveJoints) = JwR_small.leftCols(numPassiveJoints);
+  auto chain = getChainDofIndices(mRightEndEffector);
+  for (int i = 1; i < chain.size(); i++)
+    JwR_full.col(chain[i]) = JwR_small.col(numPassiveJoints + i - 1);
   JwR =
       (mRot0 * JwR_full * mJtf).topRightCorner(numLowerBodyLinks, numBodyLinks);
 
   if (!mInverseKinematicsOnArms) {
     // Jacobian Derivative
     dJwR_small = mRightEndEffector->getAngularJacobianDeriv();
-    dJwR_full << dJwR_small.block<3, 6>(0, 0), mZeroCol, mZeroCol,
-        dJwR_small.block<3, 2>(0, 6), mZeroCol, mZero7Col,
-        dJwR_small.block<3, 7>(0, 8);
+    dJwR_full.setZero();
+    dJwR_full.leftCols(numPassiveJoints) = dJwR_small.leftCols(numPassiveJoints);
+    for (int i = 1; i < chain.size(); i++)
+      dJwR_full.col(chain[i]) = dJwR_small.col(numPassiveJoints + i - 1);
     dJwR = (mdRot0 * JwR_full * mJtf + mRot0 * dJwR_full * mJtf +
             mRot0 * JwR_full * mdJtf)
                .topRightCorner(numLowerBodyLinks, numBodyLinks);
