@@ -387,13 +387,8 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     torqueHigh(i - 1) = mKm_array[i - 1] * mGR_array[i - 1] * currHigh(i - 1);
   }
 
-  // cout << "mViscousFriction:" << mViscousFriction.transpose() << endl;
-
-  std::size_t index = 0;
-
-  // cout << mRobot->getJoint(4)->getName() << endl;
-
   // Set torso friction
+  std::size_t index = 0;
   mRobot->getJoint("JTorso")->setCoulombFriction(index, 750);
   mRobot->getJoint("JTorso")->setDampingCoefficient(index, 750);
 
@@ -401,19 +396,19 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
                                                    "LJ5", "LJ6", "LJFT"};
   for (int i = 0; i < numArmJoints; i++) {
-    mRobot->getJoint(left_arm_joint_names[i])->setCoulombFriction(
-        index, mCoulombFriction(i, i) / 10);
-    mRobot->getJoint(left_arm_joint_names[i])->setDampingCoefficient(
-        index, mViscousFriction(i, i) / 10);
+    mRobot->getJoint(left_arm_joint_names[i])
+        ->setCoulombFriction(index, mCoulombFriction(i, i) / 10);
+    mRobot->getJoint(left_arm_joint_names[i])
+        ->setDampingCoefficient(index, mViscousFriction(i, i) / 10);
   }
   // Set right arm frictions
-  std::vector<std::string> right_arm_joint_names = {
-      "RJ1", "RJ2", "RJ3", "RJ4", "RJ5", "RJ6", "RJFT"};
+  std::vector<std::string> right_arm_joint_names = {"RJ1", "RJ2", "RJ3", "RJ4",
+                                                    "RJ5", "RJ6", "RJFT"};
   for (int i = 0; i < numArmJoints; i++) {
-    mRobot->getJoint(right_arm_joint_names[i])->setCoulombFriction(
-        index, mCoulombFriction(i, i) / 10);
-    mRobot->getJoint(right_arm_joint_names[i])->setDampingCoefficient(
-        index, mViscousFriction(i, i) / 10);
+    mRobot->getJoint(right_arm_joint_names[i])
+        ->setCoulombFriction(index, mCoulombFriction(i, i) / 10);
+    mRobot->getJoint(right_arm_joint_names[i])
+        ->setDampingCoefficient(index, mViscousFriction(i, i) / 10);
   }
 
   // **************************** if waist locked, dimesion of decision variable
@@ -1108,21 +1103,17 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // std::cout << "About to compute torques" << std::endl;
   if (mInverseKinematicsOnArms) {
-    const vector<size_t> dqIndex{11, 12, 13, 14, 15, 16, 17,
-                                 18, 19, 20, 21, 22, 23, 24};
-    // WRONG, USE PID INSTEAD OF: mRobot->setVelocities(dqIndex,
-    // mdqBodyRef.tail(14));
-
     // Get angular velocities of left and right arm joints respectively
-    dqL = mdqBody.segment(4, 7);
-    dqR = mdqBody.segment(11, 7);
+    dqL = mdqBody.segment(numBodyLinks - 2 * numArmJoints, numArmJoints);
+    dqR = mdqBody.segment(numBodyLinks - numArmJoints, numArmJoints);
 
     // Calculate opt_torque_cmd
-    // cout << "size mdqBodyRef: " << mdqBodyRef.rows() << "x" <<
-    // mdqBodyRef.cols() << endl; cout << "mdqBodyRef: " <<
-    // mdqBodyRef.transpose() << endl;
-    opt_torque_cmdL = -mKvJoint * (dqL - mdqBodyRef.segment(3, numArmJoints));
-    opt_torque_cmdR = -mKvJoint * (dqR - mdqBodyRef.segment(10, numArmJoints));
+    opt_torque_cmdL =
+        -mKvJoint *
+        (dqL - mdqBodyRef.segment(mOptDim - 2 * numArmJoints, numArmJoints));
+    opt_torque_cmdR =
+        -mKvJoint *
+        (dqR - mdqBodyRef.segment(mOptDim - numArmJoints, numArmJoints));
 
     // Set lmtd_torque_cmd
     for (int i = 0; i < 7; i++) {
@@ -1152,7 +1143,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     } else {
       for (int i = 2; i < numActuators - 2 * numArmJoints; i++)
         mRobot->getJoint(lower_body_joint_names[i])
-            ->setVelocity(0, mdqBodyRef(i));
+            ->setVelocity(0, mdqBodyRef((numDof == 25? i : i - 1)));
     }
   } else {
     // ************************************ Torques
