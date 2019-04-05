@@ -394,24 +394,26 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   // cout << mRobot->getJoint(4)->getName() << endl;
 
   // Set torso friction
-  mRobot->getJoint(4)->setCoulombFriction(index, 750);
-  mRobot->getJoint(4)->setDampingCoefficient(index, 750);
+  mRobot->getJoint("JTorso")->setCoulombFriction(index, 750);
+  mRobot->getJoint("JTorso")->setDampingCoefficient(index, 750);
 
   // Set left arm frictions
-  for (int i = 6; i < 13; i++) {
-    std::size_t index = 0;
-    mRobot->getJoint(i)->setCoulombFriction(
-        index, mCoulombFriction(i - 6, i - 6) / 10);
-    mRobot->getJoint(i)->setDampingCoefficient(
-        index, mViscousFriction(i - 6, i - 6) / 10);
+  std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
+                                                   "LJ5", "LJ6", "LJFT"};
+  for (int i = 0; i < numArmJoints; i++) {
+    mRobot->getJoint(left_arm_joint_names[i])->setCoulombFriction(
+        index, mCoulombFriction(i, i) / 10);
+    mRobot->getJoint(left_arm_joint_names[i])->setDampingCoefficient(
+        index, mViscousFriction(i, i) / 10);
   }
   // Set right arm frictions
-  for (int i = 15; i < 22; i++) {
-    std::size_t index = 0;
-    mRobot->getJoint(i)->setCoulombFriction(
-        index, mCoulombFriction(i - 15, i - 15) / 10);
-    mRobot->getJoint(i)->setDampingCoefficient(
-        index, mViscousFriction(i - 15, i - 15) / 10);
+  std::vector<std::string> right_arm_joint_names = {
+      "RJ1", "RJ2", "RJ3", "RJ4", "RJ5", "RJ6", "RJFT"};
+  for (int i = 0; i < numArmJoints; i++) {
+    mRobot->getJoint(right_arm_joint_names[i])->setCoulombFriction(
+        index, mCoulombFriction(i, i) / 10);
+    mRobot->getJoint(right_arm_joint_names[i])->setDampingCoefficient(
+        index, mViscousFriction(i, i) / 10);
   }
 
   // **************************** if waist locked, dimesion of decision variable
