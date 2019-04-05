@@ -49,7 +49,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
     numControls = 2;
     numStates = 8;
 
-    mTauLim = Eigen::VectorXd(numBodyLinks);
     mForces = Eigen::VectorXd(numControls);
     mDDPStatePenalties = Eigen::VectorXd(numStates);
     mDDPTerminalStatePenalties = Eigen::VectorXd(numStates);
@@ -114,10 +113,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
       for (int i = 0; i < numControls; i++) stream >> mMPCControlPenalties(i);
       stream.clear();
 
-      str = cfg->lookupString(scope, "tauLim");
-      stream.str(str);
-      for (int i = 0; i < numBodyLinks; i++) stream >> mTauLim(i);
-      stream.clear();
+      mTauLimBase = cfg->lookupFloat(scope, "tauLimBase");
 
       mContinuousZoom = cfg->lookupBoolean(scope, "continuousZoom");
 
@@ -151,7 +147,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
               << mMPCTerminalStatePenalties.transpose() << std::endl;
     std::cout << "MPCControlPenalties: " << mMPCControlPenalties.transpose()
               << std::endl;
-    std::cout << "tauLim: " << mTauLim.transpose() << std::endl;
+    std::cout << "tauLimBase: " << mTauLimBase << std::endl;
     std::cout << "continuousZoom: " << (mContinuousZoom ? "true" : "false")
               << std::endl;
     std::cout << "waistLocked: " << (mWaistLocked ? "true" : "false")
@@ -273,7 +269,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
   Eigen::Vector3d mRightTargetRPY;
   double mInitCOMAngle;
   bool mLockedJoints;
-  Eigen::VectorXd mTauLim;
+  double mTauLimBase;
   bool mWaistLocked;
 
   // 3DOF robot
@@ -1081,13 +1077,13 @@ void MyWindow::timeStepping() {
       // Wheel Torques
       tau_L = -0.5 * (tau_1 + tau_0);
       tau_R = -0.5 * (tau_1 - tau_0);
-      if (abs(tau_L) > mTauLim(0) / 2 | abs(tau_R) > mTauLim(0) / 2) {
+      if (abs(tau_L) > mTauLimBase / 2 | abs(tau_R) > mTauLimBase / 2) {
         std::cout << "step: " << mSteps << ", tau_0: " << tau_0
                   << ", tau_1: " << tau_1 << ", tau_L: " << tau_L
                   << ", tau_R: " << tau_R << std::endl;
       }
-      tau_L = std::min(mTauLim(0) / 2, std::max(-mTauLim(0) / 2, tau_L));
-      tau_R = std::min(mTauLim(0) / 2, std::max(-mTauLim(0) / 2, tau_R));
+      tau_L = std::min(mTauLimBase / 2, std::max(-mTauLimBase / 2, tau_L));
+      tau_R = std::min(mTauLimBase / 2, std::max(-mTauLimBase / 2, tau_R));
       mForces(0) = tau_L;
       mForces(1) = tau_R;
       const std::vector<size_t> index{6, 7};

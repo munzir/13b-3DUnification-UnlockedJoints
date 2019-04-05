@@ -234,10 +234,12 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
     stream.clear();
 
     // -- Torque Limits
-    str = cfg->lookupString(scope, "tauLim");
-    stream.str(str);
-    for (int i = 0; i < numBodyLinks; i++) stream >> tauLim(i);
-    stream.clear();
+    for (int i = 0; i < numBodyLinks; i++)
+      tauLim(i) = cfg->lookupFloat(
+          scope,
+          ("tauLim" +
+           (i == 0 ? "Base" : _robot->getDof(i + numTwipDof - 1)->getName()))
+              .c_str());
 
     // -- Gains
     mKpEE(0, 0) = cfg->lookupFloat(scope, "KpEE");
@@ -287,11 +289,11 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
 
     // Regulation
     for (int i = 0; i < numBodyLinks; i++) {
-      str = (i == 0 ? "Base"
-                    : cfg->lookupString(
-                          scope, ("wReg" +
-                                  _robot->getDof(i + numTwipDof - 1)->getName())
-                                     .c_str()));
+      str = cfg->lookupString(
+          scope,
+          ("wReg" +
+           (i == 0 ? "Base" : _robot->getDof(i + numTwipDof - 1)->getName()))
+              .c_str());
       stream.str(str);
       stream >> mWMatPose(i, i);
       stream >> mWMatSpeedReg(i, i);
@@ -314,7 +316,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _robot,
   cout << "COMAngleControl: " << (mCOMAngleControl ? "true" : "false") << endl;
   cout << "maintainInitCOMDistance: "
        << (mMaintainInitCOMDistance ? "true" : "false") << endl;
-  cout << "tauLim: " << mTauLim.transpose() << endl;
+  cout << "tauLim: " << tauLim.transpose() << endl;
   cout << "KpEE: " << mKpEE(0, 0) << ", " << mKpEE(1, 1) << ", " << mKpEE(2, 2)
        << endl;
   cout << "KvEE: " << mKvEE(0, 0) << ", " << mKvEE(1, 1) << ", " << mKvEE(2, 2)
@@ -546,7 +548,8 @@ void Controller::setLeftArmOptParams(
   if (!mInverseKinematicsOnArms) {
     dJEEL_small = mLeftEndEffector->getLinearJacobianDeriv();
     dJEEL_full.setZero();
-    dJEEL_full.leftCols(numPassiveJoints) = dJEEL_small.leftCols(numPassiveJoints);
+    dJEEL_full.leftCols(numPassiveJoints) =
+        dJEEL_small.leftCols(numPassiveJoints);
     for (int i = 1; i < chain.size(); i++)
       dJEEL_full.col(chain[i]) = dJEEL_small.col(numPassiveJoints + i - 1);
     dJEEL = (mdRot0 * JEEL_full * mJtf + mRot0 * dJEEL_full * mJtf +
@@ -603,7 +606,8 @@ void Controller::setRightArmOptParams(
   if (!mInverseKinematicsOnArms) {
     dJEER_small = mRightEndEffector->getLinearJacobianDeriv();
     dJEER_full.setZero();
-    dJEER_full.leftCols(numPassiveJoints) = dJEER_small.leftCols(numPassiveJoints);
+    dJEER_full.leftCols(numPassiveJoints) =
+        dJEER_small.leftCols(numPassiveJoints);
     for (int i = 1; i < chain.size(); i++)
       dJEER_full.col(chain[i]) = dJEER_small.col(numPassiveJoints + i - 1);
     dJEER = (mdRot0 * JEER_full * mJtf + mRot0 * dJEER_full * mJtf +
@@ -679,7 +683,8 @@ void Controller::setLeftOrientationOptParams(
     // Jacobian Derivative
     dJwL_small = mLeftEndEffector->getAngularJacobianDeriv();
     dJwL_full.setZero();
-    dJwL_full.leftCols(numPassiveJoints) = dJwL_small.leftCols(numPassiveJoints);
+    dJwL_full.leftCols(numPassiveJoints) =
+        dJwL_small.leftCols(numPassiveJoints);
     for (int i = 1; i < chain.size(); i++)
       dJwL_full.col(chain[i]) = dJwL_small.col(numPassiveJoints + i - 1);
     dJwL = (mdRot0 * JwL_full * mJtf + mRot0 * dJwL_full * mJtf +
@@ -762,7 +767,8 @@ void Controller::setRightOrientationOptParams(
     // Jacobian Derivative
     dJwR_small = mRightEndEffector->getAngularJacobianDeriv();
     dJwR_full.setZero();
-    dJwR_full.leftCols(numPassiveJoints) = dJwR_small.leftCols(numPassiveJoints);
+    dJwR_full.leftCols(numPassiveJoints) =
+        dJwR_small.leftCols(numPassiveJoints);
     for (int i = 1; i < chain.size(); i++)
       dJwR_full.col(chain[i]) = dJwR_small.col(numPassiveJoints + i - 1);
     dJwR = (mdRot0 * JwR_full * mJtf + mRot0 * dJwR_full * mJtf +
@@ -1127,8 +1133,8 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     // Set Forces
     std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
                                                      "LJ5", "LJ6", "LJFT"};
-    std::vector<std::string> right_arm_joint_names = {"RJ1", "RJ2", "RJ3", "RJ4",
-                                                      "RJ5", "RJ6", "RJFT"};
+    std::vector<std::string> right_arm_joint_names = {
+        "RJ1", "RJ2", "RJ3", "RJ4", "RJ5", "RJ6", "RJFT"};
     for (int i = 0; i < 7; i++) {
       mRobot->getJoint(left_arm_joint_names[i])
           ->setForce(0, lmtd_torque_cmdL(i));
@@ -1136,14 +1142,15 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
           ->setForce(0, lmtd_torque_cmdR(i));
     }
 
-    std::vector<std::string> lower_body_joint_names =
-        {"JLWheel", "JRWheel", "JWaist", "JTorso", "JKinect"};
+    std::vector<std::string> lower_body_joint_names = {
+        "JLWheel", "JRWheel", "JWaist", "JTorso", "JKinect"};
     if (mCOMControlInLowLevel) {
-      for (int i = 0; i < numActuators - 2*numArmJoints; i++)
+      for (int i = 0; i < numActuators - 2 * numArmJoints; i++)
         mRobot->getJoint(lower_body_joint_names[i])->setForce(0, mForces(i));
     } else {
-      for (int i = 2; i < numActuators - 2*numArmJoints; i++)
-        mRobot->getJoint(lower_body_joint_names[i])->setVelocity(0, mdqBodyRef(i));
+      for (int i = 2; i < numActuators - 2 * numArmJoints; i++)
+        mRobot->getJoint(lower_body_joint_names[i])
+            ->setVelocity(0, mdqBodyRef(i));
     }
   } else {
     // ************************************ Torques
