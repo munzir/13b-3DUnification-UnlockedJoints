@@ -29,6 +29,14 @@ class MyWindow : public dart::gui::glut::SimWindow {
 
  public:
   MyWindow(const dart::simulation::WorldPtr& world) {
+    // Attach the world passed in the input argument to the window, and
+    // fetch the robot from the world
+    setWorld(world);
+    mkrang = world->getSkeleton("krang");
+    numDof = mkrang->getNumDofs();
+    numTwipDof = 8;
+    numBodyLinks = numDof - numTwipDof + 1;
+
     // *********************************** Tunable Parameters
     config4cpp::Configuration* cfg = config4cpp::Configuration::create();
     const char* scope = "";
@@ -37,8 +45,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::istringstream stream;
     double newDouble;
 
-    numDof = 25;
-    numBodyLinks = 18;
 
     numControls = 2;
     numStates = 8;
@@ -153,10 +159,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::cout << "COMControlInLowLevel: "
               << (mCOMControlInLowLevel ? "true" : "false") << std::endl;
 
-    // Attach the world passed in the input argument to the window, and
-    // fetch the robot from the world
-    setWorld(world);
-    mkrang = world->getSkeleton("krang");
     if (mLockedJoints) {
       int joints = mkrang->getNumJoints();
       for (int i = 3; i < joints; i++) {
@@ -185,7 +187,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
         .prerotate(Eigen::AngleAxisd(-M_PI / 2 + psi, Eigen::Vector3d::UnitY()))
         .prerotate(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitX()));
     aa = Eigen::AngleAxisd(baseTf.rotation());
-    q << aa.angle() * aa.axis(), mkrang->getPositions().tail(22);
+    q << aa.angle() * aa.axis(), mkrang->getPositions().tail(numDof-3);
     mkrang->setPositions(q);
 
     // Initialize the simplified robot
@@ -312,6 +314,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
   int numStates;
 
   int numDof;
+  int numTwipDof;
 
   // Camera motion
   Eigen::Matrix3d mTrackBallRot;
@@ -1219,9 +1222,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   krang = loader.parseSkeleton(urdfpath);
   krang->setName("krang");
 
-  int numDof = krang->getNumDofs();
-
-  Eigen::VectorXd initPoseParams(numDof - 1);
+  Eigen::VectorXd initPoseParams(24);
   initPoseParams << 0.0, -1.047, 0.0, 0.0, 0.264, 0.0, 0.0, -4.2976, 0.053232,
       -0.0575697, -1.36631, -0.495357, 0.969689, -1.55801, -0.421576, -1.27307,
       -1.35663, 1.2217, 0.606397, -0.91889, 1.50091, 0.516969, 1.31059,
@@ -1235,7 +1236,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   Eigen::VectorXd qRightArmInit(7);
   Eigen::Transform<double, 3, Eigen::Affine> baseTf;
   Eigen::AngleAxisd aa;
-  Eigen::VectorXd q(numDof);
+  Eigen::VectorXd qBase(6);
 
   // Read initial pose from the file
   file = std::ifstream("../../src/defaultInit.txt");
@@ -1243,7 +1244,7 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   file.getline(line, 1024);
   stream = std::istringstream(line);
   i = 0;
-  while ((i < numDof - 1) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
+  while ((i < 24) && (stream >> newDouble)) initPoseParams(i++) = newDouble;
   file.close();
   headingInit = initPoseParams(0);
   qBaseInit = initPoseParams(1);
@@ -1256,6 +1257,21 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   qLeftArmInit << initPoseParams.segment(10, 7);
   qRightArmInit << initPoseParams.segment(17, 7);
 
+  krang->getJoint("JLWheel")->setPosition(0, qLWheelInit);
+  krang->getJoint("JRWheel")->setPosition(0, qRWheelInit);
+  krang->getJoint("JWaist")->setPosition(0, qWaistInit);
+  krang->getJoint("JTorso")->setPosition(0, qTorsoInit);
+  std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
+                                                   "LJ5", "LJ6", "LJFT"};
+  std::vector<std::string> right_arm_joint_names = {"RJ1", "RJ2", "RJ3", "RJ4",
+                                                    "RJ5", "RJ6", "RJFT"};
+  for (int i = 0; i < 7; i++) {
+    krang->getJoint(left_arm_joint_names[i])
+        ->setPosition(0, qLeftArmInit(i));
+    krang->getJoint(right_arm_joint_names[i])
+        ->setPosition(0, qRightArmInit(i));
+  }
+
   // Calculating the axis angle representation of orientation from headingInit
   // and qBaseInit: RotX(pi/2)*RotY(-pi/2+headingInit)*RotX(-qBaseInit)
   baseTf = Eigen::Transform<double, 3, Eigen::Affine>::Identity();
@@ -1266,9 +1282,8 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   aa = Eigen::AngleAxisd(baseTf.rotation());
 
   // Set the positions and get the resulting COM angle
-  q << aa.angle() * aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit,
-      qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit;
-  krang->setPositions(q);
+  qBase << aa.angle() * aa.axis(), xyzInit;
+  krang->setPositions({0, 1, 2, 3, 4, 5}, qBase);
   COM = krang->getCOM() - xyzInit;
   th = atan2(COM(0), COM(2));
 
@@ -1281,9 +1296,8 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
           Eigen::AngleAxisd(-M_PI / 2 + headingInit, Eigen::Vector3d::UnitY()))
       .prerotate(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitX()));
   aa = Eigen::AngleAxisd(baseTf.rotation());
-  q << aa.angle() * aa.axis(), xyzInit, qLWheelInit, qRWheelInit, qWaistInit,
-      qTorsoInit, qKinectInit, qLeftArmInit, qRightArmInit;
-  krang->setPositions(q);
+  qBase << aa.angle() * aa.axis(), xyzInit;
+  krang->setPositions({0, 1, 2, 3, 4, 5}, qBase);
 
   krang->getJoint(0)->setDampingCoefficient(0, 0.5);
   krang->getJoint(1)->setDampingCoefficient(0, 0.5);
