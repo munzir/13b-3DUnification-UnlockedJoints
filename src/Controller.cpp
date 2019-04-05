@@ -1125,17 +1125,25 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     }
 
     // Set Forces
-    const vector<size_t> forceIndexL{11, 12, 13, 14, 15, 16, 17};
-    const vector<size_t> forceIndexR{18, 19, 20, 21, 22, 23, 24};
-    mRobot->setForces(forceIndexL, lmtd_torque_cmdL);
-    mRobot->setForces(forceIndexR, lmtd_torque_cmdR);
+    std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
+                                                     "LJ5", "LJ6", "LJFT"};
+    std::vector<std::string> right_arm_joint_names = {"RJ1", "RJ2", "RJ3", "RJ4",
+                                                      "RJ5", "RJ6", "RJFT"};
+    for (int i = 0; i < 7; i++) {
+      mRobot->getJoint(left_arm_joint_names[i])
+          ->setForce(0, lmtd_torque_cmdL(i));
+      mRobot->getJoint(right_arm_joint_names[i])
+          ->setForce(0, lmtd_torque_cmdR(i));
+    }
 
+    std::vector<std::string> lower_body_joint_names =
+        {"JLWheel", "JRWheel", "JWaist", "JTorso", "JKinect"};
     if (mCOMControlInLowLevel) {
-      const vector<size_t> forceIndex{6, 7, 8, 9, 10};
-      mRobot->setForces(forceIndex, mForces.head(5));
+      for (int i = 0; i < numActuators - 2*numArmJoints; i++)
+        mRobot->getJoint(lower_body_joint_names[i])->setForce(0, mForces(i));
     } else {
-      const vector<size_t> dqIndex2{8, 9, 10};
-      mRobot->setVelocities(dqIndex2, mdqBodyRef.segment(2, 3));
+      for (int i = 2; i < numActuators - 2*numArmJoints; i++)
+        mRobot->getJoint(lower_body_joint_names[i])->setVelocity(0, mdqBodyRef(i));
     }
   } else {
     // ************************************ Torques
@@ -1143,9 +1151,10 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     mForces(0) = -mR / mL * tau_0 - bodyTorques(0) / 2;
     mForces(1) = mR / mL * tau_0 - bodyTorques(0) / 2;
     mForces.tail(mOptDim - 1) = bodyTorques.tail(mOptDim - 1);
-    const vector<size_t> index{6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
-                               16, 17, 18, 19, 20, 21, 22, 23, 24};
-    mRobot->setForces(index, mForces);
+    for (size_t i = 0; i < numActuators; i++) {
+      std::vector<size_t> index{i + numPassiveJoints};
+      mRobot->setForces(index, mForces.row(i));
+    }
   }
 
   if (mSteps < 0) {
