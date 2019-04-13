@@ -1167,8 +1167,7 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
         mRobot->getJoint(lower_body_joint_names[i])->setForce(0, mForces(i));
     } else {
       for (int i = 2; i < numActuators - 2 * numArmJoints; i++)
-        mRobot->getJoint(lower_body_joint_names[i])
-            ->setVelocity(0, mdqBodyRef((numDof == 25 ? i : i - 1)));
+        mRobot->getJoint(lower_body_joint_names[i])->setVelocity(0, 0.0);
     }
   } else {
     // ************************************ Torques
