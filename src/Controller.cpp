@@ -41,12 +41,13 @@
 // Things I did
 // removed extra damping coefficient set in line 93
 
+#include <krang-qp/id.hpp>
+#include <krang-qp/ik.hpp>
+#include <krang-qp/qp.hpp>
+
 #include <krang-utils/file_ops.hpp>
 
 #include "Controller.hpp"
-#include "id.hpp"
-#include "ik.hpp"
-#include "qp.hpp"
 
 //==============================================================================
 std::vector<int> getChainDofIndices(dart::dynamics::BodyNode* body) {
@@ -915,10 +916,10 @@ void Controller::setRegulationOptParams() {
   //}
 
   // Test using qp method
-  qpRegulationOptParams(mInverseKinematicsOnArms, mqBody, mqBodyInit, mdqBody,
-                        mWMatPose, mWMatSpeedReg, mWMatReg, mKpPose, mKvPose,
-                        mKvSpeedReg, mPPose, mbPose, mPSpeedReg, mbSpeedReg,
-                        mPReg, mbReg);
+  qp::qpRegulationOptParams(mInverseKinematicsOnArms, mqBody, mqBodyInit,
+                            mdqBody, mWMatPose, mWMatSpeedReg, mWMatReg,
+                            mKpPose, mKvPose, mKvSpeedReg, mPPose, mbPose,
+                            mPSpeedReg, mbSpeedReg, mPReg, mbReg);
 }
 
 //==============================================================================
@@ -1069,10 +1070,10 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // set Regulation Opt Params
   // setRegulationOptParams();
-  qpRegulationOptParams(mInverseKinematicsOnArms, mqBody, mqBodyInit, mdqBody,
-                        mWMatPose, mWMatSpeedReg, mWMatReg, mKpPose, mKvPose,
-                        mKvSpeedReg, mPPose, mbPose, mPSpeedReg, mbSpeedReg,
-                        mPReg, mbReg);
+  qp::qpRegulationOptParams(mInverseKinematicsOnArms, mqBody, mqBodyInit,
+                            mdqBody, mWMatPose, mWMatSpeedReg, mWMatReg,
+                            mKpPose, mKvPose, mKvSpeedReg, mPPose, mbPose,
+                            mPSpeedReg, mbSpeedReg, mPReg, mbReg);
 
   if (!mInverseKinematicsOnArms) {
     // set mMM and mhh
@@ -1086,14 +1087,16 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   Eigen::MatrixXd P = defineP();
   Eigen::VectorXd b = defineb();
-  // Eigen::MatrixXd P = qpdefineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal, mPPose,
+  // Eigen::MatrixXd P = qp::qpdefineP(mPEER, mPOrR, mPEEL, mPOrL, mPBal,
+  // mPPose,
   //                             mPSpeedReg, mPReg, mOptDim);
   // Eigen::VectorXd b =
-  //   qpdefineb(mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg, mbReg);
-  // Eigen::MatrixXd P = qpdefineP(&mPEER, &mPOrR, &mPEEL, &mPOrL, &mPBal,
+  //   qp::qpdefineb(mbEER, mbOrR, mbEEL, mbOrL, mbBal, mbPose, mbSpeedReg,
+  //   mbReg);
+  // Eigen::MatrixXd P = qp::qpdefineP(&mPEER, &mPOrR, &mPEEL, &mPOrL, &mPBal,
   // &mPPose,
   //                              &mPSpeedReg, &mPReg, &mOptDim);
-  // Eigen::VectorXd b = qpdefineb(&mbEER, &mbOrR, &mbEEL, &mbOrL, &mbBal,
+  // Eigen::VectorXd b = qp::qpdefineb(&mbEER, &mbOrR, &mbEEL, &mbOrL, &mbBal,
   // &mbPose,
   //                              &mbSpeedReg, &mbReg);
 

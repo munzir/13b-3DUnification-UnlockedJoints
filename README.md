@@ -32,6 +32,9 @@
 - [18h-krang-utils](https://github.gatech.edu/WholeBodyControlAttempt1/18h-krang-utils)
  Install the repository.
 
+- [47-QP](https://github.gatech.edu/WholeBodyControlAttempt1/47-QP)
+ Install the repository.
+
 ## Use
 In `src/controlParams.cfg`, there are many configuration parameters that the user can play with. For now, their meaning will need to be understood by looking at their role in the source code itself.
 
