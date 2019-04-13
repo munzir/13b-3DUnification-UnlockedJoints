@@ -202,6 +202,8 @@ class Controller {
   int numBodyLinks;
   int numArmJoints;
   int numLowerBodyLinks;
+  int numLowerBodyLinksOnBase;
+  int numTaskDof;
   int numBodyLinksOnBase;
   int numTwipDof;
   int numTwipMinDof;
