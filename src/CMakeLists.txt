@@ -13,4 +13,4 @@ file(GLOB srcs "*.cpp" "*.hpp")
 add_executable(${PROJECT_NAME} ${srcs})
 
 target_link_libraries(${PROJECT_NAME} ${DART_LIBRARIES} nlopt config4cpp
-                      krang-utils)
+                      krang-utils krang-qp)
