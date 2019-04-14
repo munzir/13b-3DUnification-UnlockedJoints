@@ -13,7 +13,7 @@
 #include <iostream>
 #include <nlopt.hpp>
 
-#include "Controller.hpp"
+#include <krang-qp/Controller.hpp>
 #include "krangddp.h"
 
 class MyWindow : public dart::gui::glut::SimWindow {
