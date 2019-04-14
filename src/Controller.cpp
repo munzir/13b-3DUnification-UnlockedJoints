@@ -1030,11 +1030,12 @@ Eigen::VectorXd Controller::defineb() {
 }
 
 //==============================================================================
-void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
-                        const Eigen::Vector3d& _RightTargetPosition,
-                        const Eigen::Vector3d& _LeftTargetRPY,
-                        const Eigen::Vector3d& _RightTargetRPY, double thref,
-                        double dthref, double ddthref, double tau_0) {
+updateStruct Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
+                                   const Eigen::Vector3d& _RightTargetPosition,
+                                   const Eigen::Vector3d& _LeftTargetRPY,
+                                   const Eigen::Vector3d& _RightTargetRPY,
+                                   double thref, double dthref, double ddthref,
+                                   double tau_0) {
   // increase the step counter
   mSteps++;
 
@@ -1131,47 +1132,50 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
 
   // std::cout << "About to compute torques" << std::endl;
   if (mInverseKinematicsOnArms) {
+
     // Get angular velocities of left and right arm joints respectively
-    dqL = mdqBody.segment(numBodyLinks - 2 * numArmJoints, numArmJoints);
-    dqR = mdqBody.segment(numBodyLinks - numArmJoints, numArmJoints);
 
-    // Calculate opt_torque_cmd
-    opt_torque_cmdL =
-        -mKvJoint *
-        (dqL - mdqBodyRef.segment(mOptDim - 2 * numArmJoints, numArmJoints));
-    opt_torque_cmdR =
-        -mKvJoint *
-        (dqR - mdqBodyRef.segment(mOptDim - numArmJoints, numArmJoints));
+    //dqL = mdqBody.segment(numBodyLinks - 2 * numArmJoints, numArmJoints);
+    //dqR = mdqBody.segment(numBodyLinks - numArmJoints, numArmJoints);
 
-    // Set lmtd_torque_cmd
-    for (int i = 0; i < 7; i++) {
-      lmtd_torque_cmdL(i) =
-          std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdL(i)));
-      lmtd_torque_cmdR(i) =
-          std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdR(i)));
-    }
+    //// Calculate opt_torque_cmd
+    //opt_torque_cmdL =
+    //    -mKvJoint *
+    //    (dqL - mdqBodyRef.segment(mOptDim - 2 * numArmJoints, numArmJoints));
+    //opt_torque_cmdR =
+    //    -mKvJoint *
+    //    (dqR - mdqBodyRef.segment(mOptDim - numArmJoints, numArmJoints));
 
-    // Set Forces
-    std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
-                                                     "LJ5", "LJ6", "LJFT"};
-    std::vector<std::string> right_arm_joint_names = {
-        "RJ1", "RJ2", "RJ3", "RJ4", "RJ5", "RJ6", "RJFT"};
-    for (int i = 0; i < 7; i++) {
-      mRobot->getJoint(left_arm_joint_names[i])
-          ->setForce(0, lmtd_torque_cmdL(i));
-      mRobot->getJoint(right_arm_joint_names[i])
-          ->setForce(0, lmtd_torque_cmdR(i));
-    }
+    //// Set lmtd_torque_cmd
+    //for (int i = 0; i < 7; i++) {
+    //  lmtd_torque_cmdL(i) =
+    //      std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdL(i)));
+    //  lmtd_torque_cmdR(i) =
+    //      std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdR(i)));
+    //}
 
-    std::vector<std::string> lower_body_joint_names = {
-        "JLWheel", "JRWheel", "JWaist", "JTorso", "JKinect"};
-    if (mCOMControlInLowLevel) {
-      for (int i = 0; i < numActuators - 2 * numArmJoints; i++)
-        mRobot->getJoint(lower_body_joint_names[i])->setForce(0, mForces(i));
-    } else {
-      for (int i = 2; i < numActuators - 2 * numArmJoints; i++)
-        mRobot->getJoint(lower_body_joint_names[i])->setVelocity(0, 0.0);
-    }
+    //// Set Forces
+    //std::vector<std::string> left_arm_joint_names = {"LJ1", "LJ2", "LJ3", "LJ4",
+    //                                                 "LJ5", "LJ6", "LJFT"};
+    //std::vector<std::string> right_arm_joint_names = {
+    //    "RJ1", "RJ2", "RJ3", "RJ4", "RJ5", "RJ6", "RJFT"};
+    //for (int i = 0; i < 7; i++) {
+    //  mRobot->getJoint(left_arm_joint_names[i])
+    //      ->setForce(0, lmtd_torque_cmdL(i));
+    //  mRobot->getJoint(right_arm_joint_names[i])
+    //      ->setForce(0, lmtd_torque_cmdR(i));
+    //}
+
+    //std::vector<std::string> lower_body_joint_names = {
+    //    "JLWheel", "JRWheel", "JWaist", "JTorso", "JKinect"};
+    //if (mCOMControlInLowLevel) {
+    //  for (int i = 0; i < numActuators - 2 * numArmJoints; i++)
+    //    mRobot->getJoint(lower_body_joint_names[i])->setForce(0, mForces(i));
+    //} else {
+    //  for (int i = 2; i < numActuators - 2 * numArmJoints; i++)
+    //    mRobot->getJoint(lower_body_joint_names[i])->setVelocity(0, 0.0);
+    //}
+
   } else {
     // ************************************ Torques
     Eigen::VectorXd bodyTorques = mMM * mddqBodyRef + mhh;
@@ -1238,6 +1242,19 @@ void Controller::update(const Eigen::Vector3d& _LeftTargetPosition,
     cout << "Reg loss: " << pow((mPReg * mddqBodyRef - mbReg).norm(), 2)
          << endl;
   }
+
+  updateStruct updateOutput;
+  updateOutput.mdqBodyRef = mdqBodyRef;
+  updateOutput.mdqBody = mdqBody;
+  updateOutput.numBodyLinks = numBodyLinks;
+  updateOutput.numArmJoints = numArmJoints;
+  updateOutput.mKvJoint = mKvJoint;
+  updateOutput.mOptDim = mOptDim;
+  updateOutput.torqueLow = torqueLow;
+  updateOutput.torqueHigh = torqueHigh;
+  updateOutput.numActuators = numActuators;
+
+  return updateOutput;
 }
 
 //=========================================================================

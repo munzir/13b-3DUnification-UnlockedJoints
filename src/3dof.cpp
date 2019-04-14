@@ -45,7 +45,6 @@ class MyWindow : public dart::gui::glut::SimWindow {
     std::istringstream stream;
     double newDouble;
 
-
     numControls = 2;
     numStates = 8;
 
@@ -183,7 +182,7 @@ class MyWindow : public dart::gui::glut::SimWindow {
         .prerotate(Eigen::AngleAxisd(-M_PI / 2 + psi, Eigen::Vector3d::UnitY()))
         .prerotate(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitX()));
     aa = Eigen::AngleAxisd(baseTf.rotation());
-    q << aa.angle() * aa.axis(), mkrang->getPositions().tail(numDof-3);
+    q << aa.angle() * aa.axis(), mkrang->getPositions().tail(numDof - 3);
     mkrang->setPositions(q);
 
     // Initialize the simplified robot
@@ -689,8 +688,7 @@ dart::dynamics::SkeletonPtr MyWindow::create3DOF_URDF(
 
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
-  dart::dynamics::SkeletonPtr threeDOF =
-      loader.parseSkeleton(urdfpath);
+  dart::dynamics::SkeletonPtr threeDOF = loader.parseSkeleton(urdfpath);
   threeDOF->setName("m3DOF");
 
   threeDOF->getJoint(0)->setDampingCoefficient(0, 0.5);
@@ -1028,6 +1026,8 @@ void MyWindow::timeStepping() {
     mMPCWriter.save_step(cur_state, mMPCControlRef);
   }
 
+  updateStruct updateOutput;
+
   if (mMPCSteps > -1) {
     if (!mLockedJoints) {
       double ddthref, tau_0;
@@ -1038,9 +1038,69 @@ void MyWindow::timeStepping() {
         std::cout << "world's dt: " << mWorld->getTimeStep() << std::endl;
       }
       mthref += mdthref * mWorld->getTimeStep();
-      mController->update(mLeftTargetPosition, mRightTargetPosition,
-                          mLeftTargetRPY, mRightTargetRPY, mthref, mdthref,
-                          ddthref, tau_0);
+      updateOutput = mController->update(
+          mLeftTargetPosition, mRightTargetPosition, mLeftTargetRPY,
+          mRightTargetRPY, mthref, mdthref, ddthref, tau_0);
+
+      // /  / Set forces based on the output speeds from the update function
+      Eigen::VectorXd mdqBodyRef = updateOutput.mdqBodyRef;
+      Eigen::VectorXd mdqBody = updateOutput.mdqBody;
+      int numBodyLinks = updateOutput.numBodyLinks;
+      int numArmJoints = updateOutput.numArmJoints;
+      Eigen::MatrixXd mKvJoint = updateOutput.mKvJoint;
+      int mOptDim = updateOutput.mOptDim;
+      Eigen::VectorXd torqueLow = updateOutput.torqueLow;
+      Eigen::VectorXd torqueHigh = updateOutput.torqueHigh;
+      int numActuators = updateOutput.numActuators;
+
+      Eigen::VectorXd dqL;
+      Eigen::VectorXd dqR;
+      Eigen::VectorXd opt_torque_cmdL;
+      Eigen::VectorXd opt_torque_cmdR;
+      Eigen::VectorXd lmtd_torque_cmdL(numArmJoints);
+      Eigen::VectorXd lmtd_torque_cmdR(numArmJoints);
+
+      // mRobot is replaced with mkrang
+
+      // Get angular velocities of left and right arm joints respectively
+
+      dqL = mdqBody.segment(numBodyLinks - 2 * numArmJoints, numArmJoints);
+      dqR = mdqBody.segment(numBodyLinks - numArmJoints, numArmJoints);
+
+      // Calculate opt_torque_cmd
+      opt_torque_cmdL =
+          -mKvJoint *
+          (dqL - mdqBodyRef.segment(mOptDim - 2 * numArmJoints, numArmJoints));
+      opt_torque_cmdR =
+          -mKvJoint *
+          (dqR - mdqBodyRef.segment(mOptDim - numArmJoints, numArmJoints));
+
+      // Set lmtd_torque_cmd
+      for (int i = 0; i < 7; i++) {
+        lmtd_torque_cmdL(i) =
+            std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdL(i)));
+        lmtd_torque_cmdR(i) =
+            std::max(torqueLow(i), std::min(torqueHigh(i), opt_torque_cmdR(i)));
+      }
+
+      // Set Forces
+      std::vector<std::string> left_arm_joint_names = {
+          "LJ1", "LJ2", "LJ3", "LJ4", "LJ5", "LJ6", "LJFT"};
+      std::vector<std::string> right_arm_joint_names = {
+          "RJ1", "RJ2", "RJ3", "RJ4", "RJ5", "RJ6", "RJFT"};
+      for (int i = 0; i < 7; i++) {
+        mkrang->getJoint(left_arm_joint_names[i])
+            ->setForce(0, lmtd_torque_cmdL(i));
+        mkrang->getJoint(right_arm_joint_names[i])
+            ->setForce(0, lmtd_torque_cmdR(i));
+      }
+
+      std::vector<std::string> lower_body_joint_names = {
+          "JLWheel", "JRWheel", "JWaist", "JTorso", "JKinect"};
+      for (int i = 2; i < numActuators - 2 * numArmJoints; i++)
+        mkrang->getJoint(lower_body_joint_names[i])->setVelocity(0, 0.0);
+
+      // End setting forces based on output speeds from Controller::update(*)
     }
 
     if (mLockedJoints | !mCOMControlInLowLevel) {
@@ -1262,10 +1322,8 @@ dart::dynamics::SkeletonPtr createKrang(const char* urdfpath) {
   std::vector<std::string> right_arm_joint_names = {"RJ1", "RJ2", "RJ3", "RJ4",
                                                     "RJ5", "RJ6", "RJFT"};
   for (int i = 0; i < 7; i++) {
-    krang->getJoint(left_arm_joint_names[i])
-        ->setPosition(0, qLeftArmInit(i));
-    krang->getJoint(right_arm_joint_names[i])
-        ->setPosition(0, qRightArmInit(i));
+    krang->getJoint(left_arm_joint_names[i])->setPosition(0, qLeftArmInit(i));
+    krang->getJoint(right_arm_joint_names[i])->setPosition(0, qRightArmInit(i));
   }
 
   // Calculating the axis angle representation of orientation from headingInit
@@ -1311,8 +1369,7 @@ dart::dynamics::SkeletonPtr createTray(dart::dynamics::BodyNodePtr ee,
 
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
-  dart::dynamics::SkeletonPtr tray =
-      loader.parseSkeleton(urdfpath);
+  dart::dynamics::SkeletonPtr tray = loader.parseSkeleton(urdfpath);
   tray->setName("tray");
 
   // Orientation
@@ -1343,8 +1400,7 @@ dart::dynamics::SkeletonPtr createCup(dart::dynamics::BodyNodePtr ee,
 
   // Load the Skeleton from a file
   dart::utils::DartLoader loader;
-  dart::dynamics::SkeletonPtr cup =
-      loader.parseSkeleton(urdfpath);
+  dart::dynamics::SkeletonPtr cup = loader.parseSkeleton(urdfpath);
   cup->setName("cup");
 
   // Orientation
