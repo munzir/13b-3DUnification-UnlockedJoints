@@ -40,6 +40,19 @@
 
 #include "filter.hpp"
 
+// Struct definition for output of Controller::update(*)
+struct updateStruct {
+  Eigen::MatrixXd mdqBodyRef;
+  Eigen::VectorXd mdqBody;
+  int numBodyLinks;
+  int numArmJoints;
+  Eigen::MatrixXd mKvJoint;
+  int mOptDim;
+  Eigen::VectorXd torqueLow;
+  Eigen::VectorXd torqueHigh;
+  int numActuators;
+};
+
 /// \brief Operational space controller for 6-dof manipulator
 class Controller {
  public:
@@ -75,12 +88,11 @@ class Controller {
 
   Eigen::VectorXd defineb();
 
-  /// \brief
-  void update(const Eigen::Vector3d& _LeftTargetPosition,
-              const Eigen::Vector3d& _RightTargetPosition,
-              const Eigen::Vector3d& _LeftTargetRPY,
-              const Eigen::Vector3d& _RightTargetRPY, double thref,
-              double dthref, double ddthref, double tau_0);
+  updateStruct update(const Eigen::Vector3d& _LeftTargetPosition,
+                         const Eigen::Vector3d& _RightTargetPosition,
+                         const Eigen::Vector3d& _LeftTargetRPY,
+                         const Eigen::Vector3d& _RightTargetRPY, double thref,
+                         double dthref, double ddthref, double tau_0);
 
   /// \brief Get robot
   dart::dynamics::SkeletonPtr getRobot() const;
